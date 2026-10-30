@@ -62,7 +62,7 @@ export function App({
     <AgentSessionProvider session={session}>
       <AppSetup />
       <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController isVideoInputSupported={isVideoInputSupported} />
+        <ViewController isVideoInputSupported={isVideoInputSupported} resume={resume} />
       </main>
       <StartAudioButton label="Start Audio" />
       <Toaster

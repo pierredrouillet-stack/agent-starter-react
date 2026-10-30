@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useAgent, useSessionContext } from '@livekit/components-react';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
 import { WelcomeView } from '@/components/app/welcome-view';
+import type { ResumeRequest } from '@/lib/resume';
 
 const MotionWelcomeView = motion.create(WelcomeView);
 const MotionSessionView = motion.create(AgentSessionView_01);
@@ -29,9 +30,10 @@ const VIEW_MOTION_PROPS = {
 
 interface ViewControllerProps {
   isVideoInputSupported: boolean;
+  resume?: ResumeRequest & { startedAt: string };
 }
 
-export function ViewController({ isVideoInputSupported }: ViewControllerProps) {
+export function ViewController({ isVideoInputSupported, resume }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const agent = useAgent();
   const { resolvedTheme } = useTheme();
@@ -45,6 +47,7 @@ export function ViewController({ isVideoInputSupported }: ViewControllerProps) {
           {...VIEW_MOTION_PROPS}
           startButtonText="Start call"
           onStartCall={start}
+          resume={resume}
         />
       )}
       {/* Session view */}
