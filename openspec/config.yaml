@@ -32,11 +32,17 @@ schema: spec-driven
 
 rules:
   proposal:
-    - Before writing the proposal, run `git fetch origin dev` and create a new branch from `origin/dev` named exactly after the change (e.g. `git switch -c <change-name> origin/dev`); if that branch already exists, switch to it instead
+    - Before writing the proposal, run `git fetch origin main` and create a new branch from `origin/main` named exactly after the change (e.g. `git switch -c <change-name> origin/main`); if that branch already exists, switch to it instead
+    - Keep proposals under 500 words
+    - Always state what is out of scope
 
 operations:
   apply:
     guidance:
+      - Keep test summaries concise
       - After completing each task (and checking it off in tasks.md), commit that task's changes in its own commit, including the tasks.md update
       - Use a conventional-commit message describing the task (e.g. `feat(<scope>): <task summary>`)
       - Do not batch several tasks into one commit, and do not push unless asked
+  archive:
+    guidance:
+      - Summarize the archive outcome before finishing
