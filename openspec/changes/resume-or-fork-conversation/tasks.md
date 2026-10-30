@@ -7,7 +7,7 @@
 
 ## 2. Data access
 
-- [ ] 2.1 Add `getResumableConversation(id)` to `lib/conversations.ts`, reusing the read-only helper and returning `HistoryResult` with the conversation's start time, whether it is in progress and its message count; verify against the fixture with a one-off `node` run for a finished, an in-progress, an empty and an unknown id.
+- [x] 2.1 Add `getResumableConversation(id)` to `lib/conversations.ts`, reusing the read-only helper and returning `HistoryResult` with the conversation's start time, whether it is in progress and its message count; verify against the fixture with a one-off `node` run for a finished, an in-progress, an empty and an unknown id.
 - [ ] 2.2 Add a small pure helper that parses `resume` and `mode` search params into `{ conversationId, mode } | null` (accepting only `continue` and `fork`) and builds the metadata JSON string; verify with a one-off run that `mode=foo`, a missing id and repeated params all yield null, and that valid input produces the contract's JSON.
 
 ## 3. History page actions
