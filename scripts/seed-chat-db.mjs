@@ -20,7 +20,8 @@ db.exec(`
     id TEXT PRIMARY KEY,
     started_at TEXT NOT NULL,
     ended_at TEXT,
-    agent_name TEXT
+    agent_name TEXT,
+    parent_id TEXT REFERENCES conversations(id)
   );
   CREATE TABLE messages (
     id TEXT PRIMARY KEY,
@@ -33,7 +34,7 @@ db.exec(`
 `);
 
 const addConversation = db.prepare(
-  'INSERT INTO conversations (id, started_at, ended_at, agent_name) VALUES (?, ?, ?, ?)'
+  'INSERT INTO conversations (id, started_at, ended_at, agent_name, parent_id) VALUES (?, ?, ?, ?, ?)'
 );
 const addMessage = db.prepare(
   'INSERT INTO messages (id, conversation_id, role, content, created_at, interrupted) VALUES (?, ?, ?, ?, ?, ?)'
@@ -42,7 +43,7 @@ const addMessage = db.prepare(
 const minutesAgo = (m) => new Date(Date.now() - m * 60_000).toISOString();
 
 // Finished conversation
-addConversation.run('room-finished', minutesAgo(180), minutesAgo(170), 'starter-agent');
+addConversation.run('room-finished', minutesAgo(180), minutesAgo(170), 'starter-agent', null);
 addMessage.run('f1', 'room-finished', 'user', 'Hi, what can you do?', minutesAgo(179), 0);
 addMessage.run(
   'f2',
@@ -56,12 +57,20 @@ addMessage.run('f3', 'room-finished', 'user', 'Thanks, that is all.', minutesAgo
 addMessage.run('f4', 'room-finished', 'assistant', 'You are welcome!', minutesAgo(171), 0);
 
 // In-progress conversation
-addConversation.run('room-live', minutesAgo(5), null, 'starter-agent');
+addConversation.run('room-live', minutesAgo(5), null, 'starter-agent', null);
 addMessage.run('l1', 'room-live', 'user', 'Are you still there?', minutesAgo(4), 0);
 addMessage.run('l2', 'room-live', 'assistant', 'Yes, I am here.', minutesAgo(3), 0);
 
+// Empty conversation
+addConversation.run('room-empty', minutesAgo(30), minutesAgo(29), 'starter-agent', null);
+
+// Fork of the finished conversation
+addConversation.run('room-fork', minutesAgo(20), minutesAgo(15), 'starter-agent', 'room-finished');
+addMessage.run('k1', 'room-fork', 'user', 'Let us pick up where we left off.', minutesAgo(19), 0);
+addMessage.run('k2', 'room-fork', 'assistant', 'Sure, happy to continue.', minutesAgo(18), 0);
+
 // Interrupted message + non user/assistant role row
-addConversation.run('room-interrupted', minutesAgo(60), minutesAgo(55), 'starter-agent');
+addConversation.run('room-interrupted', minutesAgo(60), minutesAgo(55), 'starter-agent', null);
 addMessage.run('i1', 'room-interrupted', 'user', 'Tell me a long story.', minutesAgo(59), 0);
 addMessage.run(
   'i2',
