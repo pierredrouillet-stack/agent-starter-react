@@ -34,7 +34,7 @@ interface AudioVisualizerProps extends MotionProps {
 export function AudioVisualizer({
   themeMode,
   isChatOpen,
-  audioVisualizerType = 'bar',
+  audioVisualizerType = 'aura',
   audioVisualizerColor,
   audioVisualizerColorShift = 0.3,
   audioVisualizerBarCount = 5,

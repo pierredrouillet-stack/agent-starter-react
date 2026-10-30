@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 function WelcomeImage() {
@@ -44,6 +45,15 @@ export const WelcomeView = ({
         >
           {startButtonText}
         </Button>
+
+        {process.env.NODE_ENV === 'development' && (
+          <Link
+            href="/history"
+            className="text-muted-foreground hover:text-foreground mt-4 text-sm underline"
+          >
+            History
+          </Link>
+        )}
       </section>
 
       <div className="fixed bottom-5 left-0 flex w-full items-center justify-center">
