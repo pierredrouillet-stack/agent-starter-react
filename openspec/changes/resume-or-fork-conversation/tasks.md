@@ -2,7 +2,7 @@
 
 ## 1. Storage contract
 
-- [ ] 1.1 Update `docs/conversation-storage.md` with the nullable `conversations.parent_id` column, the rule that `conversations.id` equals the room name only for fresh starts, the dispatch-metadata shape `{"resume":{"conversation_id","mode":"continue"|"fork"}}`, what the agent writes in each mode (continue keeps the id and clears `ended_at`; fork creates a new id with `parent_id`), and the requirement that `AGENT_NAME` is set; verify against design.md Decisions 3 and 4 and the "Storage contract" requirement's three scenarios.
+- [x] 1.1 Update `docs/conversation-storage.md` with the nullable `conversations.parent_id` column, the rule that `conversations.id` equals the room name only for fresh starts, the dispatch-metadata shape `{"resume":{"conversation_id","mode":"continue"|"fork"}}`, what the agent writes in each mode (continue keeps the id and clears `ended_at`; fork creates a new id with `parent_id`), and the requirement that `AGENT_NAME` is set; verify against design.md Decisions 3 and 4 and the "Storage contract" requirement's three scenarios.
 - [ ] 1.2 Add `parent_id` to the fixture in `scripts/seed-chat-db.mjs` (one fork row pointing at a finished conversation); verify `node scripts/seed-chat-db.mjs <path>` runs and `PRAGMA table_info(conversations)` lists `parent_id`.
 
 ## 2. Data access
