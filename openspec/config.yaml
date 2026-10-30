@@ -41,7 +41,7 @@ operations:
     guidance:
       - Keep test summaries concise
       - After completing each task (and checking it off in tasks.md), commit that task's changes in its own commit, including the tasks.md update
-      - Use a conventional-commit message describing the task (e.g. `feat(<scope>): <task summary>`)
+      - "Use a conventional-commit message describing the task (e.g. `feat(<scope>): <task summary>`)"
       - Do not batch several tasks into one commit, and do not push unless asked
   archive:
     guidance:
