@@ -12,7 +12,7 @@
 
 ## 3. History page actions
 
-- [ ] 3.1 On `app/history/[id]/page.tsx`, add Resume and Fork links to `/?resume=<id>&mode=continue|fork`, enabled only when the conversation has ended, has messages and `AGENT_NAME` is set, otherwise disabled with a one-line reason; verify against the fixture for a finished, an in-progress and an empty conversation, and with `AGENT_NAME` set and unset.
+- [x] 3.1 On `app/history/[id]/page.tsx`, add Resume and Fork links to `/?resume=<id>&mode=continue|fork`, enabled only when the conversation has ended, has messages and `AGENT_NAME` is set, otherwise disabled with a one-line reason; verify against the fixture for a finished, an in-progress and an empty conversation, and with `AGENT_NAME` set and unset.
 
 ## 4. Starting the session
 
