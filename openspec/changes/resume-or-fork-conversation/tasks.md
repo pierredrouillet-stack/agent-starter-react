@@ -23,7 +23,7 @@
 
 ## 5. Integration
 
-- [ ] 5.1 Run `pnpm lint`, `pnpm format:check` and `pnpm build`; verify all three pass and that a plain "Start call" from `/` still behaves as before.
+- [x] 5.1 Run `pnpm lint`, `pnpm format:check` and `pnpm build`; verify all three pass and that a plain "Start call" from `/` still behaves as before.
 - [ ] 5.2 With a stub or the real agent reading `job.metadata`, start one Resume and one Fork from the fixture and confirm the agent receives the documented JSON in each case; record the result in the PR description, noting that agent-side behavior is verified in the agent repository.
 
 ## Workflow follow-up
