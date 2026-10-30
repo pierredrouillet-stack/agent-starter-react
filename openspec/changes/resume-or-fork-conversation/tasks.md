@@ -19,7 +19,7 @@
 - [x] 4.1 In `app/page.tsx`, read `searchParams` (async in Next 15), ignore them unless `NODE_ENV === 'development'`, validate with `getResumableConversation`, and pass `App` either a `resume` value (`conversationId`, `mode`, `startedAt`) or a `resumeError` message; verify with `pnpm build` and by requesting `/?resume=<id>&mode=fork` for a valid, an unknown and an in-progress id.
 - [x] 4.2 In `components/app/app.tsx`, pass `agentMetadata` built from `resume` to `useSession` next to `agentName` (omitted when there is no resume), and show `resumeError` as a toast; verify in the browser network tab that the token request's `room_config.agents[0].metadata` carries the JSON for a valid request, is absent for `/`, and that an error shows a toast and starts an ordinary session.
 - [x] 4.3 Add the pending-resume banner with a dismiss link to `/` to `components/app/welcome-view.tsx` (naming the conversation date and the mode); verify it appears for a valid request, that dismissing returns to `/` with no metadata sent, and that the banner stays across a call ending and the welcome screen returning.
-- [ ] 4.4 Verify `NODE_ENV=production pnpm start` with `/?resume=<id>&mode=continue` starts an ordinary session with no metadata and no banner (covers the development-only requirement).
+- [x] 4.4 Verify `NODE_ENV=production pnpm start` with `/?resume=<id>&mode=continue` starts an ordinary session with no metadata and no banner (covers the development-only requirement).
 
 ## 5. Integration
 
