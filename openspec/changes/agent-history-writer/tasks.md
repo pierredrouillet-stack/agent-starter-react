@@ -24,7 +24,7 @@
 ## 5. Docs
 
 - [x] 5.1 Update `README.md` with how to run the worker, which `AGENT_NAME` and `CHAT_DB_PATH` to set on each side, that the cloud agent must use a different name, and how to confirm a conversation was saved; add any clarification to `docs/conversation-storage.md` that implementation revealed; verify by following the README steps from a clean shell.
-- [ ] 5.2 Run `pnpm lint`, `pnpm format:check` and `pnpm build`; verify all three pass and the app is unchanged.
+- [x] 5.2 Run `pnpm lint`, `pnpm format:check` and `pnpm build`; verify all three pass and the app is unchanged.
 
 ## Workflow follow-up
 
