@@ -3,9 +3,14 @@
 See docs/conversation-storage.md for the schema this module writes.
 """
 
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
+
+logger = logging.getLogger("recorder")
+
+_warned_unset = False
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS conversations (
@@ -88,3 +93,61 @@ def end_conversation(conn: sqlite3.Connection, conversation_id: str) -> None:
 
 def db_path_from_env() -> str | None:
     return os.environ.get("CHAT_DB_PATH") or None
+
+
+class Recorder:
+    """Writes one conversation. Every method logs and swallows errors."""
+
+    def __init__(self, conversation_id: str, agent_name: str | None) -> None:
+        self.conversation_id = conversation_id
+        self.agent_name = agent_name
+        self._conn: sqlite3.Connection | None = None
+        self._enabled = False
+        path = db_path_from_env()
+        if path is None:
+            global _warned_unset
+            if not _warned_unset:
+                logger.warning("CHAT_DB_PATH is not set; conversation recording is off")
+                _warned_unset = True
+            return
+        try:
+            self._conn = open_db(path)
+            self._enabled = True
+        except Exception:
+            logger.exception("could not open history database at %s", path)
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def _run(self, fn, *args) -> None:
+        if not self._enabled or self._conn is None:
+            return
+        try:
+            fn(self._conn, *args)
+        except Exception:
+            logger.exception("history write failed")
+
+    def start(self) -> None:
+        self._run(start_conversation, self.conversation_id, self.agent_name)
+
+    def save_message(
+        self,
+        message_id: str,
+        role: str,
+        content: str,
+        created_at: float,
+        interrupted: bool,
+    ) -> None:
+        self._run(
+            upsert_message,
+            self.conversation_id,
+            message_id,
+            role,
+            content,
+            created_at,
+            interrupted,
+        )
+
+    def end(self) -> None:
+        self._run(end_conversation, self.conversation_id)
