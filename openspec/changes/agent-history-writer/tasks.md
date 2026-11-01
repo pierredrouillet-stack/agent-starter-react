@@ -13,7 +13,7 @@
 
 ## 3. Wire the agent
 
-- [ ] 3.1 Call `attach` from the agent's entrypoint with the dispatch name; verify the diff to the entrypoint is only that call and its import.
+- [x] 3.1 Call `attach` from the agent's entrypoint with the dispatch name; verify the diff to the entrypoint is only that call and its import.
 
 ## 4. Verify end to end
 

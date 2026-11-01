@@ -16,6 +16,8 @@ from livekit.agents import (
 )
 from livekit.plugins import ai_coustics
 
+from recorder import attach
+
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
@@ -144,6 +146,8 @@ async def my_agent(ctx: JobContext):
         # Audio model above.
         expressive=True,
     )
+
+    attach(session, ctx, AGENT_NAME)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
