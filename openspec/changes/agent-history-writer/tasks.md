@@ -7,7 +7,7 @@
 
 ## 2. Recorder module
 
-- [ ] 2.1 Add the recorder's storage part: open `CHAT_DB_PATH` in WAL mode with a busy timeout, create the two tables from `docs/conversation-storage.md` if missing, and expose functions to start a conversation, upsert a message and end a conversation; verify with a one-off script that a fresh path gets the tables and that `PRAGMA journal_mode` reads `wal`.
+- [x] 2.1 Add the recorder's storage part: open `CHAT_DB_PATH` in WAL mode with a busy timeout, create the two tables from `docs/conversation-storage.md` if missing, and expose functions to start a conversation, upsert a message and end a conversation; verify with a one-off script that a fresh path gets the tables and that `PRAGMA journal_mode` reads `wal`.
 - [ ] 2.2 Make every storage call log and swallow errors, and make an unset `CHAT_DB_PATH` log one warning and turn recording off; verify with a one-off run that an unwritable path and an unset variable both leave the calling code running.
 - [ ] 2.3 Add the session wiring: one `attach` call that takes the session, job context and dispatch name, inserts the conversation on start, saves user and assistant text items on `conversation_item_added` (skipping other item types, setting `interrupted`), and on close saves any missed items from `session.history` then sets `ended_at` (also on job shutdown); verify event and field names against the installed `livekit-agents` docs and with a stub session that emits a message, an interrupted message, a tool item and a close.
 
