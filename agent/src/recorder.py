@@ -151,3 +151,51 @@ class Recorder:
 
     def end(self) -> None:
         self._run(end_conversation, self.conversation_id)
+
+
+def attach(session, ctx, agent_name: str | None) -> Recorder:
+    """Record `session` to the history file. Call before `session.start`."""
+    recorder = Recorder(ctx.room.name, agent_name)
+    saved: set[str] = set()
+    ended = False
+
+    def save_item(item) -> None:
+        if getattr(item, "type", None) != "message":
+            return
+        if item.role not in ("user", "assistant"):
+            return
+        text = item.text_content
+        if not text:
+            return
+        recorder.save_message(
+            item.id, item.role, text, item.created_at, bool(item.interrupted)
+        )
+        saved.add(item.id)
+
+    def finish() -> None:
+        nonlocal ended
+        if ended:
+            return
+        ended = True
+        try:
+            for item in session.history.items:
+                if getattr(item, "id", None) not in saved:
+                    save_item(item)
+        except Exception:
+            logger.exception("could not reconcile session history")
+        recorder.end()
+
+    @session.on("conversation_item_added")
+    def _on_item(event) -> None:
+        save_item(event.item)
+
+    @session.on("close")
+    def _on_close(event) -> None:
+        finish()
+
+    async def _on_shutdown() -> None:
+        finish()
+
+    ctx.add_shutdown_callback(_on_shutdown)
+    recorder.start()
+    return recorder
