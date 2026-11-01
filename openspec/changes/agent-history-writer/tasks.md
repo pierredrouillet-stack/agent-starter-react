@@ -19,7 +19,7 @@
 
 - [x] 4.1 Point `CHAT_DB_PATH` (app and worker) at a fresh file, start the worker and `pnpm dev` with the app's `AGENT_NAME` set to the worker's name, hold a short call, and verify a row appears in `conversations` with the room name, the worker's dispatch name and a null `ended_at`, and that `/history` lists it as in progress.
 - [x] 4.2 End the call and verify `ended_at` is set, the messages from both sides are in `/history/<id>` in order, and an interrupted reply (talk over the agent) is saved with `interrupted = 1`.
-- [ ] 4.3 Unset `CHAT_DB_PATH` for the worker and verify a call still works with one warning in the worker log and no new rows.
+- [x] 4.3 Unset `CHAT_DB_PATH` for the worker and verify a call still works with one warning in the worker log and no new rows.
 
 ## 5. Docs
 
