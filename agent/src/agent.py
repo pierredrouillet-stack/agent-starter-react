@@ -1,4 +1,5 @@
 import logging
+import os
 import textwrap
 
 from dotenv import load_dotenv
@@ -18,6 +19,9 @@ from livekit.plugins import ai_coustics
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
+
+# Dispatch name of this local worker. Must differ from any deployed agent's name.
+AGENT_NAME = os.environ.get("AGENT_NAME", "pierre-assistant-dev")
 
 
 class Assistant(Agent):
@@ -90,7 +94,7 @@ class Assistant(Agent):
 server = AgentServer()
 
 
-@server.rtc_session(agent_name="agent")
+@server.rtc_session(agent_name=AGENT_NAME)
 async def my_agent(ctx: JobContext):
     # Logging setup
     # Add any other context you want in all log entries here

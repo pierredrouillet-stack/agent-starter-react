@@ -3,7 +3,7 @@
 ## 1. Scaffold the worker
 
 - [x] 1.1 Scaffold a Python agent into `agent/` with `lk agent init` (no `--deploy`), set up its environment with `uv`, and add `agent/` build artifacts (virtualenv, caches, `.env.local`) to `.gitignore`; verify `lk agent list` shows no new agent and `git status` shows only source files from the scaffold.
-- [ ] 1.2 Give the worker a local dispatch name read from `AGENT_NAME` in `agent/.env.local` (default `pierre-assistant-dev`), and document the variables in `agent/.env.example`; verify `uv run python src/agent.py dev` (or the scaffold's equivalent) starts and logs that it registered under that name.
+- [x] 1.2 Give the worker a local dispatch name read from `AGENT_NAME` in `agent/.env.local` (default `pierre-assistant-dev`), and document the variables in `agent/.env.example`; verify `uv run python src/agent.py dev` (or the scaffold's equivalent) starts and logs that it registered under that name.
 
 ## 2. Recorder module
 
