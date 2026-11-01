@@ -67,6 +67,19 @@ Leave `AGENT_NAME` blank for automatic dispatch, or set it to your agent's name 
 > [!NOTE]
 > Both options are for development only — any client can request a token. See [Token generation in production](#token-generation-in-production) before you ship.
 
+## Run the local agent and save conversations
+
+The `agent/` directory holds a Python agent worker that runs on your machine and saves each conversation to the SQLite file the [`/history`](./docs/conversation-storage.md) pages read.
+
+1. In `agent/`, copy `.env.example` to `.env.local`, fill in the LiveKit credentials, and set:
+   - `AGENT_NAME=pierre-assistant-dev`, the worker's dispatch name. It must differ from the name of any agent deployed to LiveKit Cloud, otherwise the two compete for the same sessions.
+   - `CHAT_DB_PATH`, an absolute path for the history file. The file and its folder are created if missing.
+2. In this app's `.env.local`, set `AGENT_NAME` to the same dispatch name and `CHAT_DB_PATH` to the same absolute path.
+3. Start the worker with `cd agent && uv sync && uv run python src/agent.py dev`, then start the app with `pnpm dev`.
+4. Hold a call, then open [http://localhost:3000/history](http://localhost:3000/history). The conversation shows as in progress during the call and with its messages once it ends. You can also check with `sqlite3 "$CHAT_DB_PATH" 'select id, agent_name, ended_at from conversations'`.
+
+If `CHAT_DB_PATH` is not set for the worker, calls still work but nothing is saved, and the worker logs one warning.
+
 ## Token generation in production
 
 In production, you will be responsible for developing a solution to [generate tokens for your users](https://docs.livekit.io/home/server/generating-tokens/) that integrates with your authentication system. Add an authentication layer to [`app/api/token/route.ts`](./app/api/token/route.ts), or point `tokenEndpoint` in [`app/page.tsx`](./app/page.tsx) at your own token server and drop the development token server.
