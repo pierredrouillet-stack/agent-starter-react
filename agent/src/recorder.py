@@ -41,6 +41,7 @@ def iso_utc(epoch: float | None = None) -> str:
 
 
 def open_db(path: str) -> sqlite3.Connection:
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     conn = sqlite3.connect(path, timeout=5.0, isolation_level=None)
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
