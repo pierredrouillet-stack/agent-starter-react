@@ -51,11 +51,13 @@
 
 
 import json
+import logging
 
 import pytest
 
-from agent import carried_chat_ctx, resolve_resume
-from recorder import open_db
+from agent import carried_chat_ctx, resolve_resume, session_persona
+from personas import DEFAULT_PERSONA, PERSONAS
+from recorder import ResumeRequest, open_db
 
 
 @pytest.fixture
@@ -106,3 +108,46 @@ def test_valid_request_carries_messages(history):
         ("m1", "user", "hello", False),
         ("m2", "assistant", "hi there", True),
     ]
+
+
+def _with_persona(history, persona):
+    history.execute("UPDATE conversations SET persona = ? WHERE id = 'c1'", (persona,))
+
+
+@pytest.mark.parametrize("mode", ["continue", "fork"])
+def test_resumed_session_keeps_the_saved_persona(history, mode):
+    _with_persona(history, "tutor")
+    metadata = json.dumps(
+        {
+            "persona": "storyteller",
+            "resume": {"conversation_id": "c1", "mode": mode},
+        }
+    )
+    request, _ = resolve_resume(metadata)
+
+    assert session_persona(metadata, request) is PERSONAS["tutor"]
+
+
+def test_conversation_saved_without_persona_runs_default_silently(history, caplog):
+    metadata = json.dumps(
+        {"persona": "tutor", "resume": {"conversation_id": "c1", "mode": "continue"}}
+    )
+    request, _ = resolve_resume(metadata)
+
+    with caplog.at_level(logging.WARNING):
+        assert session_persona(metadata, request) is DEFAULT_PERSONA
+    assert caplog.records == []
+
+
+def test_saved_persona_that_no_longer_exists_runs_default_and_warns(history, caplog):
+    _with_persona(history, "retired")
+    request = ResumeRequest("c1", "continue")
+
+    with caplog.at_level(logging.WARNING, logger="personas"):
+        assert session_persona(None, request) is DEFAULT_PERSONA
+    assert "retired" in caplog.text
+
+
+def test_session_without_resume_uses_the_metadata_persona(history):
+    assert session_persona('{"persona": "tutor"}', None) is PERSONAS["tutor"]
+    assert session_persona(None, None) is DEFAULT_PERSONA

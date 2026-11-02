@@ -371,3 +371,19 @@ def test_continuing_keeps_the_stored_persona(tmp_path):
     start_conversation(conn, "room-1", "agent", persona="storyteller")
 
     assert conn.execute("SELECT persona FROM conversations").fetchall() == [("tutor",)]
+
+
+def test_attach_fork_records_the_persona_that_ran_it(tmp_path, monkeypatch):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+    conn = open_db(path)
+    _seed(conn, "c1", [("user", "hello")])
+    conn.execute("UPDATE conversations SET persona = 'tutor' WHERE id = 'c1'")
+    request = ResumeRequest("c1", "fork")
+    carried = load_resume(conn, request)
+
+    attach(_FakeSession([]), _FakeCtx("room-2"), "a", request, carried, "tutor")
+
+    persona = "SELECT persona FROM conversations WHERE id = ?"
+    assert conn.execute(persona, ("room-2",)).fetchone() == ("tutor",)
+    assert conn.execute(persona, ("c1",)).fetchone() == ("tutor",)

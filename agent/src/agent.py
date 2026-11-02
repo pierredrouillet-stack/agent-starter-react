@@ -17,12 +17,13 @@ from livekit.agents import (
 from livekit.agents.types import NOT_GIVEN
 from livekit.plugins import ai_coustics
 
-from personas import DEFAULT_PERSONA, Persona
+from personas import DEFAULT_PERSONA, Persona, persona_by_id, resolve_persona
 from recorder import (
     CarriedMessage,
     ResumeRequest,
     attach,
     db_path_from_env,
+    load_persona,
     load_resume,
     open_db,
     parse_resume,
@@ -56,6 +57,30 @@ def resolve_resume(
     except Exception as exc:
         logger.warning("ignoring resume request: %s", exc)
         return None, []
+
+
+def session_persona(metadata: str | None, resume: ResumeRequest | None) -> Persona:
+    """The persona a session runs with.
+
+    A continued or forked session keeps the persona saved with the source
+    conversation and ignores the metadata's; any other session uses the metadata's.
+    """
+    if resume is None:
+        return resolve_persona(metadata)
+    path = db_path_from_env()
+    if path is None:
+        return DEFAULT_PERSONA
+    try:
+        conn = open_db(path)
+        try:
+            saved = load_persona(conn, resume.conversation_id)
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("could not read the saved persona: %s", exc)
+        return DEFAULT_PERSONA
+    # A conversation saved before personas existed has none: the default, silently.
+    return persona_by_id(saved)
 
 
 def carried_chat_ctx(carried: list[CarriedMessage]) -> llm.ChatContext:

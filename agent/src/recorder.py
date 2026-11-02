@@ -109,6 +109,14 @@ def load_resume(
     return [CarriedMessage(r[0], r[1], r[2], r[3], bool(r[4])) for r in rows]
 
 
+def load_persona(conn: sqlite3.Connection, conversation_id: str) -> str | None:
+    """The persona id saved with a conversation; None for one saved without it."""
+    row = conn.execute(
+        "SELECT persona FROM conversations WHERE id = ?", (conversation_id,)
+    ).fetchone()
+    return row[0] if row else None
+
+
 def iso_utc(epoch: float | None = None) -> str:
     moment = (
         datetime.now(timezone.utc)
