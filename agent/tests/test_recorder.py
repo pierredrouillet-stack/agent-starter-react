@@ -2,7 +2,14 @@ import sqlite3
 
 import pytest
 
-from recorder import ResumeRequest, open_db, parse_resume
+from recorder import (
+    RESUME_WINDOW,
+    ResumeError,
+    ResumeRequest,
+    load_resume,
+    open_db,
+    parse_resume,
+)
 
 OLD_SCHEMA = """
 CREATE TABLE conversations (
@@ -81,3 +88,63 @@ def test_parse_resume_valid():
 )
 def test_parse_resume_rejects(metadata):
     assert parse_resume(metadata) is None
+
+
+def _seed(conn, conversation_id, messages):
+    conn.execute(
+        "INSERT INTO conversations (id, started_at) VALUES (?, '2026-01-01T00:00:00.000Z')",
+        (conversation_id,),
+    )
+    for i, (role, content) in enumerate(messages):
+        conn.execute(
+            "INSERT INTO messages VALUES (?, ?, ?, ?, ?, 0)",
+            (
+                f"{conversation_id}:{i}",
+                conversation_id,
+                role,
+                content,
+                f"2026-01-01T00:{i // 60:02d}:{i % 60:02d}.000Z",
+            ),
+        )
+
+
+def test_load_resume_orders_oldest_first_and_skips_other_roles(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    _seed(
+        conn,
+        "c1",
+        [("user", "one"), ("system", "ignored"), ("assistant", "two"), ("user", "3")],
+    )
+    _seed(conn, "c2", [("user", "other conversation")])
+
+    loaded = load_resume(conn, ResumeRequest("c1", "continue"))
+
+    assert [(m.role, m.content) for m in loaded] == [
+        ("user", "one"),
+        ("assistant", "two"),
+        ("user", "3"),
+    ]
+
+
+def test_load_resume_keeps_only_latest_100(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    _seed(conn, "c1", [("user", str(n)) for n in range(130)])
+
+    loaded = load_resume(conn, ResumeRequest("c1", "fork"))
+
+    assert len(loaded) == RESUME_WINDOW
+    assert loaded[0].content == "30"
+    assert loaded[-1].content == "129"
+
+
+def test_load_resume_unknown_conversation(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    with pytest.raises(ResumeError):
+        load_resume(conn, ResumeRequest("missing", "continue"))
+
+
+def test_load_resume_empty_conversation(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    _seed(conn, "c1", [("system", "only a system note")])
+    with pytest.raises(ResumeError):
+        load_resume(conn, ResumeRequest("c1", "continue"))

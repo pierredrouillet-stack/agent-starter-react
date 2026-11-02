@@ -62,6 +62,45 @@ def parse_resume(metadata: str | None) -> ResumeRequest | None:
     return ResumeRequest(conversation_id, mode)
 
 
+# How many of a conversation's latest messages are carried into a resumed session.
+RESUME_WINDOW = 100
+
+
+class ResumeError(Exception):
+    """The requested conversation cannot be resumed."""
+
+
+@dataclass(frozen=True)
+class CarriedMessage:
+    id: str
+    role: str
+    content: str
+    created_at: str
+    interrupted: bool
+
+
+def load_resume(
+    conn: sqlite3.Connection, request: ResumeRequest
+) -> list[CarriedMessage]:
+    """Latest user and assistant messages of the source conversation, oldest first."""
+    exists = conn.execute(
+        "SELECT 1 FROM conversations WHERE id = ?", (request.conversation_id,)
+    ).fetchone()
+    if exists is None:
+        raise ResumeError(f"unknown conversation {request.conversation_id!r}")
+    rows = conn.execute(
+        "SELECT id, role, content, created_at, interrupted FROM ("
+        "  SELECT rowid AS rid, * FROM messages "
+        "  WHERE conversation_id = ? AND role IN ('user', 'assistant') "
+        "  ORDER BY created_at DESC, rid DESC LIMIT ?"
+        ") ORDER BY created_at, rid",
+        (request.conversation_id, RESUME_WINDOW),
+    ).fetchall()
+    if not rows:
+        raise ResumeError(f"conversation {request.conversation_id!r} has no messages")
+    return [CarriedMessage(r[0], r[1], r[2], r[3], bool(r[4])) for r in rows]
+
+
 def iso_utc(epoch: float | None = None) -> str:
     moment = (
         datetime.now(timezone.utc)
