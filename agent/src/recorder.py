@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import sqlite3
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -127,14 +128,41 @@ def start_conversation(
     conversation_id: str,
     agent_name: str | None,
     parent_id: str | None = None,
+    copy_messages: Sequence[CarriedMessage] = (),
 ) -> None:
-    # On conflict (a continued conversation) started_at and parent_id are kept.
-    conn.execute(
-        "INSERT INTO conversations (id, started_at, ended_at, agent_name, parent_id) "
-        "VALUES (?, ?, NULL, ?, ?) "
-        "ON CONFLICT(id) DO UPDATE SET ended_at = NULL, agent_name = excluded.agent_name",
-        (conversation_id, iso_utc(), agent_name, parent_id),
-    )
+    """Upsert the conversation row; `copy_messages` land in the same transaction.
+
+    Copies get the ids `<conversation_id>:<n>` since message ids are unique.
+    """
+    conn.execute("BEGIN")
+    try:
+        # On conflict (a continued conversation) started_at and parent_id are kept.
+        conn.execute(
+            "INSERT INTO conversations "
+            "(id, started_at, ended_at, agent_name, parent_id) "
+            "VALUES (?, ?, NULL, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET ended_at = NULL, "
+            "agent_name = excluded.agent_name",
+            (conversation_id, iso_utc(), agent_name, parent_id),
+        )
+        for n, message in enumerate(copy_messages):
+            conn.execute(
+                "INSERT INTO messages "
+                "(id, conversation_id, role, content, created_at, interrupted) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    f"{conversation_id}:{n}",
+                    conversation_id,
+                    message.role,
+                    message.content,
+                    message.created_at,
+                    int(message.interrupted),
+                ),
+            )
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    conn.execute("COMMIT")
 
 
 def upsert_message(
@@ -181,10 +209,12 @@ class Recorder:
         conversation_id: str,
         agent_name: str | None,
         parent_id: str | None = None,
+        copy_messages: Sequence[CarriedMessage] = (),
     ) -> None:
         self.conversation_id = conversation_id
         self.agent_name = agent_name
         self.parent_id = parent_id
+        self.copy_messages = copy_messages
         self._conn: sqlite3.Connection | None = None
         self._enabled = False
         path = db_path_from_env()
@@ -214,7 +244,11 @@ class Recorder:
 
     def start(self) -> None:
         self._run(
-            start_conversation, self.conversation_id, self.agent_name, self.parent_id
+            start_conversation,
+            self.conversation_id,
+            self.agent_name,
+            self.parent_id,
+            self.copy_messages,
         )
 
     def save_message(

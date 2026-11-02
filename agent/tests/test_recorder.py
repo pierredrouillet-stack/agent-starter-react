@@ -4,6 +4,7 @@ import pytest
 
 from recorder import (
     RESUME_WINDOW,
+    CarriedMessage,
     Recorder,
     ResumeError,
     ResumeRequest,
@@ -188,3 +189,44 @@ def test_recorder_passes_parent_id(tmp_path, monkeypatch):
     Recorder("room-2", "a", parent_id="c1").start()
 
     assert _conversation(open_db(path), "room-2")[2] == "c1"
+
+
+def test_fork_copies_carried_messages_and_leaves_source(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    _seed(conn, "c1", [("user", "hello"), ("assistant", "hi there")])
+    source_before = conn.execute(
+        "SELECT * FROM messages WHERE conversation_id = 'c1' ORDER BY id"
+    ).fetchall()
+    carried = load_resume(conn, ResumeRequest("c1", "fork"))
+
+    start_conversation(conn, "room-2", "a", parent_id="c1", copy_messages=carried)
+
+    copied = conn.execute(
+        "SELECT id, role, content, created_at, interrupted FROM messages "
+        "WHERE conversation_id = 'room-2' ORDER BY id"
+    ).fetchall()
+    assert copied == [
+        ("room-2:0", "user", "hello", carried[0].created_at, 0),
+        ("room-2:1", "assistant", "hi there", carried[1].created_at, 0),
+    ]
+    assert (
+        conn.execute(
+            "SELECT * FROM messages WHERE conversation_id = 'c1' ORDER BY id"
+        ).fetchall()
+        == source_before
+    )
+    assert _conversation(conn, "c1")[1:] == (None, None)
+
+
+def test_failed_fork_leaves_nothing_behind(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    good = CarriedMessage("m0", "user", "ok", "2026-01-01T00:00:00.000Z", False)
+    bad = CarriedMessage("m1", "user", None, "2026-01-01T00:00:01.000Z", False)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        start_conversation(
+            conn, "room-2", "a", parent_id="c1", copy_messages=[good, bad]
+        )
+
+    assert _conversation(conn, "room-2") is None
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone() == (0,)

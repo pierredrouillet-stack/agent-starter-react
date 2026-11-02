@@ -12,7 +12,7 @@
 ## 3. Recording by mode
 
 - [x] 3.1 Extend `start_conversation` and `Recorder` to key a continued session by the source id (clearing `ended_at`) and a forked session by the room name with `parent_id`; add tests that continue clears `ended_at` and keeps `started_at` and that fork writes `parent_id`, and verify they pass.
-- [ ] 3.2 Copy the carried messages into a fork with new ids `<new id>:<n>` in the same transaction as `start_conversation`; add tests that the fork holds the copied messages with original times and content, that the source rows are unchanged, and that a failure leaves no partial fork, and verify they pass.
+- [x] 3.2 Copy the carried messages into a fork with new ids `<new id>:<n>` in the same transaction as `start_conversation`; add tests that the fork holds the copied messages with original times and content, that the source rows are unchanged, and that a failure leaves no partial fork, and verify they pass.
 - [ ] 3.3 Let `attach` accept the resume request and pre-fill its `saved` set with the seeded item ids so the close-time reconcile skips them; add a test with a fake session whose history holds seeded and new items, and verify the earlier messages are not saved again and the new ones are, under the right conversation id for both modes.
 
 ## 4. Agent wiring
