@@ -273,10 +273,32 @@ class Recorder:
         self._run(end_conversation, self.conversation_id)
 
 
-def attach(session, ctx, agent_name: str | None) -> Recorder:
-    """Record `session` to the history file. Call before `session.start`."""
-    recorder = Recorder(ctx.room.name, agent_name)
-    saved: set[str] = set()
+def attach(
+    session,
+    ctx,
+    agent_name: str | None,
+    resume: ResumeRequest | None = None,
+    carried: Sequence[CarriedMessage] = (),
+) -> Recorder:
+    """Record `session` to the history file. Call before `session.start`.
+
+    With `resume`, a continued conversation is recorded under its original id and
+    a forked one under the room name, with `carried` copied into it. `carried`
+    must be what seeded the session's chat context, under the same message ids.
+    """
+    if resume is not None and resume.mode == "continue":
+        recorder = Recorder(resume.conversation_id, agent_name)
+    elif resume is not None:
+        recorder = Recorder(
+            ctx.room.name,
+            agent_name,
+            parent_id=resume.conversation_id,
+            copy_messages=carried,
+        )
+    else:
+        recorder = Recorder(ctx.room.name, agent_name)
+    # Seeded items sit in session.history but are already stored; skip them on close.
+    saved: set[str] = {message.id for message in carried}
     ended = False
 
     def save_item(item) -> None:

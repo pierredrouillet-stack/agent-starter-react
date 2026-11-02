@@ -1,4 +1,5 @@
 import sqlite3
+from types import SimpleNamespace
 
 import pytest
 
@@ -8,6 +9,7 @@ from recorder import (
     Recorder,
     ResumeError,
     ResumeRequest,
+    attach,
     load_resume,
     open_db,
     parse_resume,
@@ -230,3 +232,88 @@ def test_failed_fork_leaves_nothing_behind(tmp_path):
 
     assert _conversation(conn, "room-2") is None
     assert conn.execute("SELECT COUNT(*) FROM messages").fetchone() == (0,)
+
+
+class _FakeSession:
+    def __init__(self, items):
+        self.history = SimpleNamespace(items=items)
+        self.handlers = {}
+
+    def on(self, name):
+        def register(fn):
+            self.handlers[name] = fn
+            return fn
+
+        return register
+
+
+class _FakeCtx:
+    def __init__(self, room_name):
+        self.room = SimpleNamespace(name=room_name)
+        self.shutdown_callbacks = []
+
+    def add_shutdown_callback(self, fn):
+        self.shutdown_callbacks.append(fn)
+
+
+def _item(item_id, role, text, created_at):
+    return SimpleNamespace(
+        type="message",
+        id=item_id,
+        role=role,
+        text_content=text,
+        created_at=created_at,
+        interrupted=False,
+    )
+
+
+def _message_rows(conn, conversation_id):
+    return conn.execute(
+        "SELECT id, role, content FROM messages WHERE conversation_id = ? "
+        "ORDER BY created_at, id",
+        (conversation_id,),
+    ).fetchall()
+
+
+@pytest.mark.parametrize("mode", ["continue", "fork"])
+def test_attach_resume_skips_seeded_items_on_close(tmp_path, monkeypatch, mode):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+    conn = open_db(path)
+    _seed(conn, "c1", [("user", "hello"), ("assistant", "hi there")])
+    request = ResumeRequest("c1", mode)
+    carried = load_resume(conn, request)
+    seeded = [
+        _item(m.id, m.role, m.content, 1_800_000_000.0 + n)
+        for n, m in enumerate(carried)
+    ]
+    new = _item("new-1", "user", "and now?", 1_800_000_100.0)
+    session = _FakeSession([*seeded, new])
+    ctx = _FakeCtx("room-2")
+
+    attach(session, ctx, "a", request, carried)
+    session.handlers["close"](None)
+
+    target = "c1" if mode == "continue" else "room-2"
+    rows = _message_rows(conn, target)
+    assert ("new-1", "user", "and now?") in rows
+    if mode == "continue":
+        # Seeded rows are untouched, not rewritten or duplicated.
+        assert rows == [
+            ("c1:0", "user", "hello"),
+            ("c1:1", "assistant", "hi there"),
+            ("new-1", "user", "and now?"),
+        ]
+        assert _conversation(conn, "c1")[1] is not None
+    else:
+        # The copy holds the seeded text once, under the fork's own ids.
+        assert rows == [
+            ("room-2:0", "user", "hello"),
+            ("room-2:1", "assistant", "hi there"),
+            ("new-1", "user", "and now?"),
+        ]
+        assert _conversation(conn, "room-2")[2] == "c1"
+        assert _message_rows(conn, "c1") == [
+            ("c1:0", "user", "hello"),
+            ("c1:1", "assistant", "hi there"),
+        ]
