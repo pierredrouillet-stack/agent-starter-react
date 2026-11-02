@@ -6,7 +6,7 @@
 
 ## 2. Request and loading
 
-- [ ] 2.1 Add `parse_resume(metadata)` to `agent/src/recorder.py`, accepting only `{"resume":{"conversation_id","mode":"continue"|"fork"}}`; add tests for valid continue and fork, empty string, invalid JSON, a missing id, an unknown mode and extra fields, and verify they all pass.
+- [x] 2.1 Add `parse_resume(metadata)` to `agent/src/recorder.py`, accepting only `{"resume":{"conversation_id","mode":"continue"|"fork"}}`; add tests for valid continue and fork, empty string, invalid JSON, a missing id, an unknown mode and extra fields, and verify they all pass.
 - [ ] 2.2 Add `load_resume(conn, request)` returning the latest 100 user and assistant messages of the source oldest first, and raising a typed failure for an unknown conversation or no messages; add tests with a seeded database for order, the 100 cap, ignored non-chat roles, unknown id and empty conversation, and verify they pass.
 
 ## 3. Recording by mode

@@ -3,9 +3,11 @@
 See docs/conversation-storage.md for the schema this module writes.
 """
 
+import json
 import logging
 import os
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 logger = logging.getLogger("recorder")
@@ -30,6 +32,34 @@ CREATE TABLE IF NOT EXISTS messages (
   interrupted      INTEGER NOT NULL DEFAULT 0
 );
 """
+
+
+@dataclass(frozen=True)
+class ResumeRequest:
+    conversation_id: str
+    mode: str  # "continue" or "fork"
+
+
+def parse_resume(metadata: str | None) -> ResumeRequest | None:
+    """Read a resume request from job metadata; None if absent or unusable."""
+    if not metadata or not metadata.strip():
+        return None
+    try:
+        data = json.loads(metadata)
+        if not isinstance(data, dict) or set(data) != {"resume"}:
+            raise ValueError("expected only a 'resume' key")
+        body = data["resume"]
+        if not isinstance(body, dict) or set(body) != {"conversation_id", "mode"}:
+            raise ValueError("'resume' needs exactly conversation_id and mode")
+        conversation_id, mode = body["conversation_id"], body["mode"]
+        if not isinstance(conversation_id, str) or not conversation_id:
+            raise ValueError("conversation_id must be a non-empty string")
+        if mode not in ("continue", "fork"):
+            raise ValueError(f"unknown mode {mode!r}")
+    except ValueError as exc:  # includes json.JSONDecodeError
+        logger.warning("ignoring resume request: %s", exc)
+        return None
+    return ResumeRequest(conversation_id, mode)
 
 
 def iso_utc(epoch: float | None = None) -> str:
