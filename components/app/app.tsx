@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TokenSource } from 'livekit-client';
 import { toast } from 'sonner';
 import { useSession } from '@livekit/components-react';
@@ -11,6 +11,7 @@ import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
+import { DEFAULT_PERSONA_ID } from '@/lib/personas';
 import { type ResumeRequest, buildAgentMetadata } from '@/lib/resume';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
@@ -47,10 +48,16 @@ export function App({
     [tokenServerId, tokenEndpoint]
   );
 
+  const [personaId, setPersonaId] = useState(DEFAULT_PERSONA_ID);
+
+  // A resumed conversation already has a persona, so the picker's choice is not sent with it.
   const session = useSession(
     tokenSource,
     agentName
-      ? { agentName, ...(resume && { agentMetadata: buildAgentMetadata({ resume }) }) }
+      ? {
+          agentName,
+          agentMetadata: buildAgentMetadata(resume ? { resume } : { persona: personaId }),
+        }
       : undefined
   );
 
@@ -62,7 +69,11 @@ export function App({
     <AgentSessionProvider session={session}>
       <AppSetup />
       <main className="grid h-svh grid-cols-1 place-content-center">
-        <ViewController isVideoInputSupported={isVideoInputSupported} resume={resume} />
+        <ViewController
+          isVideoInputSupported={isVideoInputSupported}
+          resume={resume}
+          persona={agentName ? { selectedId: personaId, onSelect: setPersonaId } : undefined}
+        />
       </main>
       <StartAudioButton label="Start Audio" />
       <Toaster

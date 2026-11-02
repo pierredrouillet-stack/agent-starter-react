@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { formatStartedAt } from '@/lib/history-format';
+import { PERSONAS } from '@/lib/personas';
 import type { ResumeRequest } from '@/lib/resume';
 
 function WelcomeImage() {
@@ -21,16 +22,49 @@ function WelcomeImage() {
   );
 }
 
+export interface PersonaSelection {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}
+
+function PersonaPicker({ selectedId, onSelect }: PersonaSelection) {
+  return (
+    <fieldset className="mt-6 flex w-full max-w-md flex-col gap-2">
+      <legend className="text-muted-foreground mb-2 w-full text-sm">Choose who to talk to</legend>
+      {PERSONAS.map((persona) => (
+        <label
+          key={persona.id}
+          className="border-input hover:bg-accent has-[:checked]:border-foreground has-[:focus-visible]:ring-ring/50 cursor-pointer rounded-lg border px-4 py-3 text-left has-[:focus-visible]:ring-[3px]"
+        >
+          <input
+            type="radio"
+            name="persona"
+            value={persona.id}
+            checked={persona.id === selectedId}
+            onChange={() => onSelect(persona.id)}
+            className="sr-only"
+          />
+          <span className="text-foreground block text-sm font-medium">{persona.name}</span>
+          <span className="text-muted-foreground block text-xs">{persona.description}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: () => void;
   resume?: ResumeRequest & { startedAt: string };
+  /** Set only when a named agent is dispatched, since only then can it receive the choice. */
+  persona?: PersonaSelection;
 }
 
 export const WelcomeView = ({
   startButtonText,
   onStartCall,
   resume,
+  persona,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
   return (
@@ -51,6 +85,8 @@ export const WelcomeView = ({
             </Link>
           </p>
         )}
+
+        {persona && !resume && <PersonaPicker {...persona} />}
 
         <Button
           size="lg"

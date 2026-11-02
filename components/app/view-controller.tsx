@@ -4,7 +4,7 @@ import { useTheme } from 'next-themes';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAgent, useSessionContext } from '@livekit/components-react';
 import { AgentSessionView_01 } from '@/components/agents-ui/blocks/agent-session-view-01';
-import { WelcomeView } from '@/components/app/welcome-view';
+import { type PersonaSelection, WelcomeView } from '@/components/app/welcome-view';
 import type { ResumeRequest } from '@/lib/resume';
 
 const MotionWelcomeView = motion.create(WelcomeView);
@@ -31,9 +31,10 @@ const VIEW_MOTION_PROPS = {
 interface ViewControllerProps {
   isVideoInputSupported: boolean;
   resume?: ResumeRequest & { startedAt: string };
+  persona?: PersonaSelection;
 }
 
-export function ViewController({ isVideoInputSupported, resume }: ViewControllerProps) {
+export function ViewController({ isVideoInputSupported, resume, persona }: ViewControllerProps) {
   const { isConnected, start } = useSessionContext();
   const agent = useAgent();
   const { resolvedTheme } = useTheme();
@@ -48,6 +49,7 @@ export function ViewController({ isVideoInputSupported, resume }: ViewController
           startButtonText="Start call"
           onStartCall={start}
           resume={resume}
+          persona={persona}
         />
       )}
       {/* Session view */}

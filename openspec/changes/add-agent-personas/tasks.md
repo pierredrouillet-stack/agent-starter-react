@@ -17,7 +17,7 @@
 
 - [x] 3.1 Add `lib/personas.ts` (id, name, description, default id) and extend `lib/resume.ts` to build the metadata with an optional persona next to the resume request; verify with `pnpm build` and by reading the produced JSON for the persona-only, resume-only and both cases
 - [x] 3.2 Before building the picker, check in the installed `@livekit/components-react` whether `useSession` honors options that change after the first render; if not, key the session on the persona or pass the metadata at `start()`; verify by logging the metadata that reaches the token request in dev
-- [ ] 3.3 Hold the selected persona in `App`, pass it into the session options, and render a radio-group picker in `welcome-view.tsx` only when `agentName` is set and no resume is pending; verify with `pnpm lint`, `pnpm format:check` and `pnpm build`
+- [x] 3.3 Hold the selected persona in `App`, pass it into the session options, and render a radio-group picker in `welcome-view.tsx` only when `agentName` is set and no resume is pending; verify with `pnpm lint`, `pnpm format:check` and `pnpm build`
 - [ ] 3.4 Ensure dropping a pending resume shows the picker with the default selected; verify by loading `/?resume=<id>&mode=continue`, then following "Start fresh instead"
 
 ## 4. Docs and end-to-end check
