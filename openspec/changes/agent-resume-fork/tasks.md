@@ -24,7 +24,7 @@
 
 - [x] 5.1 Document in `agent/README.md` how to resume locally (named agent, `CHAT_DB_PATH`, the metadata shape, the 100-message window), pointing at `docs/conversation-storage.md` for the contract; verify the commands run as written against a seeded database.
 - [x] 5.2 Run `uv run ruff check` and `uv run ruff format --check` in `agent/`, then `uv run pytest`; verify all pass.
-- [ ] 5.3 With the frontend change in place, start one Resume and one Fork from `/history`, and verify in `/history` that the continued conversation gained messages under its original id, the fork is a new conversation holding the copy plus new messages, and the source is untouched; if the frontend is not ready, replay the documented JSON through the debugger instead and record which was used in the PR description.
+- [x] 5.3 With the frontend change in place, start one Resume and one Fork from `/history`, and verify in `/history` that the continued conversation gained messages under its original id, the fork is a new conversation holding the copy plus new messages, and the source is untouched; if the frontend is not ready, replay the documented JSON through the debugger instead and record which was used in the PR description.
 
 ## Workflow follow-up
 
