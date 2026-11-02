@@ -15,7 +15,7 @@
 
 ## 3. Facts in the prompt
 
-- [ ] 3.1 Give `Persona.full_instructions` the user's facts and render the `# What you know about the user` section (one line per fact with its date, flattened and length-capped, framed as background); verify with tests that no facts yield output identical to today's prompt for every persona and that a multi-line, instruction-like fact stays on one framed line
+- [x] 3.1 Give `Persona.full_instructions` the user's facts and render the `# What you know about the user` section (one line per fact with its date, flattened and length-capped, framed as background); verify with tests that no facts yield output identical to today's prompt for every persona and that a multi-line, instruction-like fact stays on one framed line
 - [ ] 3.2 Load the user's facts at session start (any failure yields none) and pass them into `Assistant`, including for resumed and forked sessions and for every persona; verify with tests that two personas receive the same facts and that a missing database yields the unchanged prompt
 - [ ] 3.3 Run `uv run pytest` in `agent/` and confirm `test_agent.py` still passes with the default persona
 
