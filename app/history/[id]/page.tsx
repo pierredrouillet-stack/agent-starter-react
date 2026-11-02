@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { StoredTranscript } from '@/components/app/stored-transcript';
+import { Button } from '@/components/ui/button';
 import { getConversation } from '@/lib/conversations';
 import { formatStartedAt } from '@/lib/history-format';
 
@@ -14,6 +15,52 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
     <div className="text-muted-foreground rounded-lg border p-6 text-sm">
       <p className="text-foreground font-medium">{title}</p>
       <p className="mt-1">{children}</p>
+    </div>
+  );
+}
+
+function ResumeActions({
+  id,
+  inProgress,
+  messageCount,
+}: {
+  id: string;
+  inProgress: boolean;
+  messageCount: number;
+}) {
+  // Metadata only reaches an explicitly dispatched agent, so a named agent is required.
+  const reason = !process.env.AGENT_NAME
+    ? 'Set AGENT_NAME to resume or fork a conversation.'
+    : inProgress
+      ? 'This conversation is still in progress.'
+      : messageCount === 0
+        ? 'This conversation has no messages to carry over.'
+        : null;
+
+  return (
+    <div className="mt-4">
+      <div className="flex gap-2">
+        {(['continue', 'fork'] as const).map((mode) => (
+          <Button
+            key={mode}
+            variant="outline"
+            size="sm"
+            disabled={reason !== null}
+            asChild={reason === null}
+          >
+            {reason === null ? (
+              <Link href={`/?resume=${encodeURIComponent(id)}&mode=${mode}`}>
+                {mode === 'continue' ? 'Resume' : 'Fork'}
+              </Link>
+            ) : mode === 'continue' ? (
+              'Resume'
+            ) : (
+              'Fork'
+            )}
+          </Button>
+        ))}
+      </div>
+      {reason && <p className="text-muted-foreground mt-2 text-xs">{reason}</p>}
     </div>
   );
 }
@@ -63,6 +110,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           {result.data.inProgress && (
             <p className="text-muted-foreground mb-6 text-xs">In progress</p>
           )}
+          <ResumeActions
+            id={result.data.id}
+            inProgress={result.data.inProgress}
+            messageCount={result.data.messages.length}
+          />
           <div className="mt-6">
             {result.data.messages.length === 0 ? (
               <Notice title="No messages">This conversation has no messages yet.</Notice>

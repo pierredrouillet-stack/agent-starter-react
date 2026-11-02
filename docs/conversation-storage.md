@@ -26,10 +26,11 @@ run as the same user on the same disk.
 
 ```sql
 CREATE TABLE IF NOT EXISTS conversations (
-  id          TEXT PRIMARY KEY,   -- stable; the room name is acceptable
+  id          TEXT PRIMARY KEY,   -- stable; equals the room name only for fresh starts
   started_at  TEXT NOT NULL,      -- ISO 8601 UTC
   ended_at    TEXT,               -- NULL while in progress
-  agent_name  TEXT
+  agent_name  TEXT,
+  parent_id   TEXT REFERENCES conversations(id)  -- NULL unless forked from another conversation
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -54,3 +55,29 @@ Use `AgentSession` events:
   keyed by the LiveKit item id. Set `interrupted = 1` when the item was interrupted.
 - **Session close**: set `conversations.ended_at`. `session.history` can be used to reconcile any
   items missed.
+
+## Resuming and forking
+
+From a conversation's transcript page the user can **Resume** or **Fork** it. The app does not write
+anything for this: it asks the agent to do so through the agent dispatch metadata, which LiveKit
+delivers to the agent as `job.metadata`. Metadata is only delivered with explicit dispatch, so
+`AGENT_NAME` MUST be set; with automatic dispatch the actions are disabled.
+
+The metadata is a JSON string:
+
+```json
+{ "resume": { "conversation_id": "<conversations.id>", "mode": "continue" } }
+```
+
+`mode` is `continue` or `fork`. Without a `resume` key (or with empty metadata) the session is an
+ordinary fresh start. Because the room name is generated per session, `conversations.id` only equals
+the room name for fresh starts.
+
+- **`continue`**: load the messages of `conversation_id` into the agent's context. Keep writing under
+  that same `conversations.id` (the room name is different) and set `ended_at` back to NULL while the
+  session runs, then set it again on close.
+- **`fork`**: load the messages of `conversation_id` into the agent's context, then insert a new
+  `conversations` row with its own id (the room name is fine) and `parent_id` set to
+  `conversation_id`. Write new messages under the new id; the original conversation is left unchanged.
+
+The app only offers these actions for conversations that have ended and have at least one message.

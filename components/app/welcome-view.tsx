@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { formatStartedAt } from '@/lib/history-format';
+import type { ResumeRequest } from '@/lib/resume';
 
 function WelcomeImage() {
   return (
@@ -22,11 +24,13 @@ function WelcomeImage() {
 interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: () => void;
+  resume?: ResumeRequest & { startedAt: string };
 }
 
 export const WelcomeView = ({
   startButtonText,
   onStartCall,
+  resume,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
   return (
@@ -37,6 +41,16 @@ export const WelcomeView = ({
         <p className="text-foreground max-w-prose pt-1 leading-6 font-medium">
           Chat live with your voice AI agent
         </p>
+
+        {resume && (
+          <p className="text-muted-foreground mt-4 text-sm">
+            {resume.mode === 'continue' ? 'Resuming' : 'Forking'} the conversation from{' '}
+            <span suppressHydrationWarning>{formatStartedAt(resume.startedAt)}</span>.{' '}
+            <Link href="/" className="hover:text-foreground underline">
+              Start fresh instead
+            </Link>
+          </p>
+        )}
 
         <Button
           size="lg"

@@ -22,6 +22,13 @@ export interface ConversationDetail {
   messages: StoredMessage[];
 }
 
+export interface ResumableConversation {
+  id: string;
+  startedAt: string;
+  inProgress: boolean;
+  messageCount: number;
+}
+
 export type HistoryResult<T> =
   | { status: 'ok'; data: T }
   | { status: 'not-configured' }
@@ -122,6 +129,33 @@ export function getConversation(id: string): HistoryResult<ConversationDetail> {
           createdAt: String(row.created_at),
           interrupted: Boolean(row.interrupted),
         })),
+      },
+    };
+  });
+}
+
+export function getResumableConversation(id: string): HistoryResult<ResumableConversation> {
+  return withDatabase<ResumableConversation>((db) => {
+    const row = db
+      .prepare(
+        `SELECT c.id AS id,
+                c.started_at AS started_at,
+                c.ended_at AS ended_at,
+                (SELECT COUNT(*) FROM messages m
+                  WHERE m.conversation_id = c.id AND m.role IN ('user', 'assistant')) AS message_count
+           FROM conversations c
+          WHERE c.id = ?`
+      )
+      .get(id) as Row | undefined;
+    if (!row) return { status: 'not-found' };
+
+    return {
+      status: 'ok',
+      data: {
+        id: String(row.id),
+        startedAt: String(row.started_at),
+        inProgress: row.ended_at === null,
+        messageCount: Number(row.message_count),
       },
     };
   });
