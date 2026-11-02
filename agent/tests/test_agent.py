@@ -55,7 +55,8 @@ import logging
 
 import pytest
 
-from agent import carried_chat_ctx, resolve_resume, session_persona
+from agent import Assistant, carried_chat_ctx, resolve_resume, session_persona
+from memory import apply_changes, load_user_facts, parse_user
 from personas import DEFAULT_PERSONA, PERSONAS
 from recorder import ResumeRequest, open_db
 
@@ -151,3 +152,73 @@ def test_saved_persona_that_no_longer_exists_runs_default_and_warns(history, cap
 def test_session_without_resume_uses_the_metadata_persona(history):
     assert session_persona('{"persona": "tutor"}', None) is PERSONAS["tutor"]
     assert session_persona(None, None) is DEFAULT_PERSONA
+
+
+def _remember(history, user_id, *facts):
+    apply_changes(history, user_id, list(facts), [], "c1")
+
+
+def test_user_facts_reach_every_persona(history):
+    _remember(history, "u-1", "Is a nurse", "Prefers short answers")
+    facts = load_user_facts("u-1")
+
+    for persona in PERSONAS.values():
+        instructions = Assistant(persona, facts=facts).instructions
+        assert "Is a nurse" in instructions
+        assert "Prefers short answers" in instructions
+        assert "# What you know about the user" in instructions
+
+
+def test_facts_reach_a_resumed_session(history):
+    _remember(history, "u-1", "Is a nurse")
+    metadata = json.dumps(
+        {"user": "u-1", "resume": {"conversation_id": "c1", "mode": "continue"}}
+    )
+    request, carried = resolve_resume(metadata)
+
+    assistant = Assistant(
+        DEFAULT_PERSONA,
+        carried_chat_ctx(carried),
+        load_user_facts(parse_user(metadata)),
+    )
+
+    assert request is not None
+    assert "Is a nurse" in assistant.instructions
+
+
+def test_only_the_users_own_facts_are_loaded(history):
+    _remember(history, "u-1", "Is a nurse")
+    _remember(history, "u-2", "Is a pilot")
+
+    assert [f.text for f in load_user_facts("u-1")] == ["Is a nurse"]
+
+
+@pytest.mark.parametrize("user_id", [None, "", "never-seen"])
+def test_a_user_without_facts_gets_the_unchanged_prompt(history, user_id):
+    facts = load_user_facts(user_id)
+
+    assert facts == []
+    for persona in PERSONAS.values():
+        assert (
+            Assistant(persona, facts=facts).instructions == persona.full_instructions()
+        )
+
+
+def test_a_missing_history_file_gives_the_unchanged_prompt(history, monkeypatch):
+    _remember(history, "u-1", "Is a nurse")
+    monkeypatch.delenv("CHAT_DB_PATH")
+
+    facts = load_user_facts("u-1")
+
+    assert facts == []
+    assert Assistant(facts=facts).instructions == DEFAULT_PERSONA.full_instructions()
+
+
+def test_an_unreadable_history_file_gives_the_unchanged_prompt(
+    tmp_path, monkeypatch, caplog
+):
+    monkeypatch.setenv("CHAT_DB_PATH", str(tmp_path))  # a directory, not a database
+
+    with caplog.at_level(logging.WARNING, logger="memory"):
+        assert load_user_facts("u-1") == []
+    assert len(caplog.records) == 1

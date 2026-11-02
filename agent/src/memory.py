@@ -56,6 +56,22 @@ def load_facts(conn: sqlite3.Connection, user_id: str) -> list[Fact]:
     return [Fact(*row) for row in rows]
 
 
+def load_user_facts(user_id: str | None) -> list[Fact]:
+    """The facts to give a session at its start; any failure means none."""
+    path = db_path_from_env()
+    if not user_id or path is None:
+        return []
+    try:
+        conn = open_db(path)
+        try:
+            return load_facts(conn, user_id)
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("could not read the user's facts: %s", exc)
+        return []
+
+
 def _same(text: str) -> str:
     return " ".join(text.split()).casefold()
 

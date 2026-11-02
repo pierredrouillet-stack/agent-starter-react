@@ -1,5 +1,6 @@
 import logging
 import os
+from collections.abc import Sequence
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -17,7 +18,7 @@ from livekit.agents import (
 from livekit.agents.types import NOT_GIVEN
 from livekit.plugins import ai_coustics
 
-from memory import attach_memory, parse_user
+from memory import Fact, attach_memory, load_user_facts, parse_user
 from personas import DEFAULT_PERSONA, Persona, persona_by_id, resolve_persona
 from recorder import (
     CarriedMessage,
@@ -111,6 +112,7 @@ class Assistant(Agent):
         self,
         persona: Persona = DEFAULT_PERSONA,
         chat_ctx: llm.ChatContext | None = None,
+        facts: Sequence[Fact] = (),
     ) -> None:
         super().__init__(
             chat_ctx=chat_ctx if chat_ctx is not None else NOT_GIVEN,
@@ -129,7 +131,7 @@ class Assistant(Agent):
                 if persona.voice
                 else NOT_GIVEN
             ),
-            instructions=persona.full_instructions(),
+            instructions=persona.full_instructions(facts),
         )
 
     # To add tools, use the @function_tool decorator.
@@ -205,6 +207,7 @@ async def my_agent(ctx: JobContext):
     resume, carried = resolve_resume(ctx.job.metadata)
     persona = session_persona(ctx.job.metadata, resume)
     user_id = parse_user(ctx.job.metadata)
+    facts = load_user_facts(user_id)
     recorder = attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)
     attach_memory(
         session,
@@ -217,7 +220,7 @@ async def my_agent(ctx: JobContext):
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(persona, carried_chat_ctx(carried) if resume else None),
+        agent=Assistant(persona, carried_chat_ctx(carried) if resume else None, facts),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
