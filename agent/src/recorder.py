@@ -34,6 +34,16 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at       TEXT NOT NULL,
   interrupted      INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS user_facts (
+  id                      INTEGER PRIMARY KEY,
+  user_id                 TEXT NOT NULL,
+  fact                    TEXT NOT NULL,
+  learned_at              TEXT NOT NULL,
+  source_conversation_id  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS user_facts_user_id ON user_facts(user_id);
 """
 
 
