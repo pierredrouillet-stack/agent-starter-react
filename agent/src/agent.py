@@ -152,6 +152,25 @@ class Assistant(Agent):
     #     return "sunny with a temperature of 70 degrees."
 
 
+RESUME_WELCOME = (
+    "The user has just returned to an earlier conversation. Welcome them "
+    "back in one short sentence that names the topic you were discussing, "
+    "without recapping it."
+)
+
+
+def greet(
+    session: AgentSession, resume: ResumeRequest | None, persona: Persona
+) -> None:
+    """Speak first when there is something to say; nothing prompts the model otherwise.
+
+    A resumed session is welcomed back, and that wins over the persona's opener.
+    """
+    instructions = RESUME_WELCOME if resume else persona.opener
+    if instructions:
+        session.generate_reply(instructions=instructions)
+
+
 server = AgentServer()
 
 
@@ -231,15 +250,7 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
-    if resume:
-        # Nothing prompts the model when the user arrives, so greet explicitly.
-        session.generate_reply(
-            instructions=(
-                "The user has just returned to an earlier conversation. Welcome them "
-                "back in one short sentence that names the topic you were discussing, "
-                "without recapping it."
-            )
-        )
+    greet(session, resume, persona)
 
     # # Add a virtual avatar to the session, if desired
     # # For other providers, see https://docs.livekit.io/agents/models/avatar/

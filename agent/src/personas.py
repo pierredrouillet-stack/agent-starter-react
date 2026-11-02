@@ -28,6 +28,9 @@ class Persona:
     voice: str | None = None
     # None keeps the default LLM.
     llm: inference.LLM | None = None
+    # What the agent says first in a fresh session, as an instruction to the model;
+    # None waits for the user to speak.
+    opener: str | None = None
 
     def full_instructions(self, facts: Sequence[Fact] = ()) -> str:
         """Persona text wrapped in the rules every spoken persona must follow.

@@ -52,10 +52,18 @@
 
 import json
 import logging
+from dataclasses import replace
 
 import pytest
 
-from agent import Assistant, carried_chat_ctx, resolve_resume, session_persona
+from agent import (
+    RESUME_WELCOME,
+    Assistant,
+    carried_chat_ctx,
+    greet,
+    resolve_resume,
+    session_persona,
+)
 from memory import apply_changes, load_user_facts, parse_user
 from personas import DEFAULT_PERSONA, PERSONAS
 from recorder import ResumeRequest, open_db
@@ -222,3 +230,48 @@ def test_an_unreadable_history_file_gives_the_unchanged_prompt(
     with caplog.at_level(logging.WARNING, logger="memory"):
         assert load_user_facts("u-1") == []
     assert len(caplog.records) == 1
+
+
+class _FakeSession:
+    def __init__(self):
+        self.replies = []
+
+    def generate_reply(self, *, instructions):
+        self.replies.append(instructions)
+
+
+OPENER = "Greet the user warmly and ask what they want to learn."
+
+
+def test_a_fresh_session_speaks_the_personas_opener():
+    session = _FakeSession()
+
+    greet(session, None, replace(PERSONAS["tutor"], opener=OPENER))
+
+    assert session.replies == [OPENER]
+
+
+def test_a_persona_without_an_opener_stays_silent():
+    session = _FakeSession()
+
+    greet(session, None, DEFAULT_PERSONA)
+
+    assert DEFAULT_PERSONA.opener is None
+    assert session.replies == []
+
+
+@pytest.mark.parametrize("mode", ["continue", "fork"])
+def test_a_resumed_session_gets_the_welcome_and_not_the_opener(mode):
+    session = _FakeSession()
+
+    greet(session, ResumeRequest("c1", mode), replace(PERSONAS["tutor"], opener=OPENER))
+
+    assert session.replies == [RESUME_WELCOME]
+
+
+def test_a_resumed_session_with_no_opener_is_still_welcomed_back():
+    session = _FakeSession()
+
+    greet(session, ResumeRequest("c1", "continue"), DEFAULT_PERSONA)
+
+    assert session.replies == [RESUME_WELCOME]
