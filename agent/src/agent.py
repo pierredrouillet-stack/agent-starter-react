@@ -209,6 +209,16 @@ async def my_agent(ctx: JobContext):
         ),
     )
 
+    if resume:
+        # Nothing prompts the model when the user arrives, so greet explicitly.
+        session.generate_reply(
+            instructions=(
+                "The user has just returned to an earlier conversation. Welcome them "
+                "back in one short sentence that names the topic you were discussing, "
+                "without recapping it."
+            )
+        )
+
     # # Add a virtual avatar to the session, if desired
     # # For other providers, see https://docs.livekit.io/agents/models/avatar/
     # avatar = anam.AvatarSession(
