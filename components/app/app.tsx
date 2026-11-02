@@ -11,7 +11,7 @@ import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
-import { type ResumeRequest, buildResumeMetadata } from '@/lib/resume';
+import { type ResumeRequest, buildAgentMetadata } from '@/lib/resume';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -50,7 +50,7 @@ export function App({
   const session = useSession(
     tokenSource,
     agentName
-      ? { agentName, ...(resume && { agentMetadata: buildResumeMetadata(resume) }) }
+      ? { agentName, ...(resume && { agentMetadata: buildAgentMetadata({ resume }) }) }
       : undefined
   );
 
