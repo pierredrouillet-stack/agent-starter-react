@@ -23,7 +23,7 @@
 ## 4. Docs and end-to-end check
 
 - [x] 4.1 Document the `persona` metadata key, the `persona` column and the NULL-means-default rule in `docs/conversation-storage.md`, and the registry in `agent/README.md`; verify the documented metadata example parses in a test
-- [ ] 4.2 Run the worker and the app locally with `AGENT_NAME` set, start a call with each persona, and check in `/history` and the SQLite file that each conversation has its persona and that Resume restores it; verify with a short note of the three runs
+- [x] 4.2 Run the worker and the app locally with `AGENT_NAME` set, start a call with each persona, and check in `/history` and the SQLite file that each conversation has its persona and that Resume restores it; verify with a short note of the three runs
 
 ## Workflow follow-up
 
