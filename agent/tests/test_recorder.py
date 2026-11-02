@@ -80,6 +80,18 @@ def test_parse_resume_ignores_persona_key():
     assert parse_resume(meta) == ResumeRequest("room-1", "fork")
 
 
+def test_parse_resume_ignores_user_key():
+    meta = '{"user":"u","resume":{"conversation_id":"room-1","mode":"continue"}}'
+    assert parse_resume(meta) == ResumeRequest("room-1", "continue")
+
+
+def test_parse_resume_ignores_persona_and_user_keys_together():
+    meta = (
+        '{"persona":"x","user":"u","resume":{"conversation_id":"room-1","mode":"fork"}}'
+    )
+    assert parse_resume(meta) == ResumeRequest("room-1", "fork")
+
+
 @pytest.mark.parametrize(
     "metadata",
     [
@@ -98,6 +110,10 @@ def test_parse_resume_ignores_persona_key():
         '{"persona":"tutor","resume":{"conversation_id":"c1","mode":"fork"},"other":1}',
         '{"persona":"tutor"}',
         '{"persona":"tutor","other":1}',
+        '{"user":"u"}',
+        '{"user":"u","other":1}',
+        '{"user":"u","resume":{"conversation_id":"c1","mode":"rewind"}}',
+        '{"user":"u","persona":"tutor","resume":{"conversation_id":"c1","mode":"fork"},"other":1}',
     ],
 )
 def test_parse_resume_rejects(metadata):
