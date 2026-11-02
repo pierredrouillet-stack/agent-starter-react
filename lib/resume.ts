@@ -19,19 +19,22 @@ export function parseResumeRequest(params: {
 }
 
 /**
- * The agent dispatch metadata documented in docs/conversation-storage.md: a resume request,
- * a persona id, both, or neither (undefined).
+ * The agent dispatch metadata documented in docs/conversation-storage.md: any of a resume request,
+ * a persona id and the anonymous user id, or none of them (undefined).
  */
 export function buildAgentMetadata({
   resume,
   persona,
+  user,
 }: {
   resume?: ResumeRequest;
   persona?: string;
+  user?: string;
 }): string | undefined {
-  if (!resume && !persona) return undefined;
+  if (!resume && !persona && !user) return undefined;
   return JSON.stringify({
     ...(persona && { persona }),
+    ...(user && { user }),
     ...(resume && {
       resume: { conversation_id: resume.conversationId, mode: resume.mode },
     }),
