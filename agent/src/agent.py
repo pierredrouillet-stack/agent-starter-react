@@ -198,11 +198,12 @@ async def my_agent(ctx: JobContext):
     )
 
     resume, carried = resolve_resume(ctx.job.metadata)
-    attach(session, ctx, AGENT_NAME, resume, carried)
+    persona = session_persona(ctx.job.metadata, resume)
+    attach(session, ctx, AGENT_NAME, resume, carried, persona.id)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(chat_ctx=carried_chat_ctx(carried) if resume else None),
+        agent=Assistant(persona, carried_chat_ctx(carried) if resume else None),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

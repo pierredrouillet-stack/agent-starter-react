@@ -11,7 +11,7 @@
 - [x] 2.1 Relax `parse_resume` to accept a `persona` key beside `resume` while keeping every check on the `resume` body; verify existing `test_parse_resume_rejects` cases still reject and that `{"persona": "x", "resume": {...}}` yields the resume request
 - [x] 2.2 Add the nullable `persona` column to the schema and to `open_db`'s in-place migration, and write it in `start_conversation`; verify with a test that an old file gains the column without losing rows and a new conversation stores its persona
 - [x] 2.3 Read the saved persona of a conversation for resume and fork, preferring it over the metadata persona and falling back to the default (with a warning when the saved id is unknown, silently when it is NULL); verify with tests for saved, NULL, unknown and fork cases
-- [ ] 2.4 Wire persona resolution into `my_agent` in `agent/src/agent.py` and pass the persona to `attach`/`Recorder`; verify with `uv run ruff check`, `uv run ruff format --check` and `uv run pytest` in `agent/`
+- [x] 2.4 Wire persona resolution into `my_agent` in `agent/src/agent.py` and pass the persona to `attach`/`Recorder`; verify with `uv run ruff check`, `uv run ruff format --check` and `uv run pytest` in `agent/`
 
 ## 3. Picker in the web app
 
