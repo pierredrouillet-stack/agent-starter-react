@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   id          TEXT PRIMARY KEY,
   started_at  TEXT NOT NULL,
   ended_at    TEXT,
-  agent_name  TEXT
+  agent_name  TEXT,
+  parent_id   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -46,6 +47,9 @@ def open_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
     conn.executescript(SCHEMA)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(conversations)")}
+    if "parent_id" not in columns:
+        conn.execute("ALTER TABLE conversations ADD COLUMN parent_id TEXT")
     return conn
 
 
