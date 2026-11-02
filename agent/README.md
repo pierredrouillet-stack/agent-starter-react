@@ -113,7 +113,7 @@ uv run src/agent.py start
 
 ## Personas
 
-`src/personas.py` holds a registry of personas. Each has an id, a one-sentence `role`, `instructions` describing its goals and manner, and optionally its own TTS `voice` id and `llm`. The voice-output rules, tool guidance and guardrails are shared by every persona, so a persona only describes its character. `assistant` is the default and its prompt is unchanged from before personas existed; `tutor` and `storyteller` are placeholders to rewrite.
+`src/personas.py` holds a registry of personas. Each has an id, a one-sentence `role`, `instructions` describing its goals and manner, and optionally its own TTS `voice` id and `llm`. The voice-output rules, tool guidance and guardrails are shared by every persona, so a persona only describes its character. `assistant` is the default and its prompt is unchanged from before personas existed; `tutor` and `storyteller` are characters with a manner of their own (a `# Manner` section with a signature habit) and an optional `opener`, an instruction for the first thing the agent says in a fresh session (a resumed session is welcomed back instead). Rewrite them freely, but keep a manner about words and attitude, since the shared output rules still apply.
 
 To add one, add a `Persona` to `_PERSONAS` and a matching entry (id, name, description) to `lib/personas.ts` in the web app. The web app sends the chosen id in the dispatch metadata (`{"persona": "tutor"}`, see [`docs/conversation-storage.md`](../docs/conversation-storage.md)); an unknown id runs the default persona and logs a warning. The persona is saved with the conversation and restored on resume and fork. Personas need explicit dispatch (`AGENT_NAME`), like resume.
 

@@ -22,7 +22,7 @@
 ## 4. Distinct characters
 
 - [x] 4.1 Add an optional `opener` to `Persona` and speak it with `session.generate_reply` after start for a fresh session only (the resume welcome wins on a resume); verify with tests for opener present, absent and resumed
-- [ ] 4.2 Rewrite the tutor and storyteller instructions as characters (diction, reactions, a signature habit) that still obey the shared output rules, and give each an opener; keep the default persona and its text unchanged; verify the default-prompt test still passes and that each persona's text differs in more than the task description
+- [x] 4.2 Rewrite the tutor and storyteller instructions as characters (diction, reactions, a signature habit) that still obey the shared output rules, and give each an opener; keep the default persona and its text unchanged; verify the default-prompt test still passes and that each persona's text differs in more than the task description
 - [ ] 4.3 Add a short simulation scenario per rewritten persona to `agent/scenarios.yaml` checking its manner and that replies stay plain spoken text; verify by running the scenarios per the `running-livekit-simulations` skill and noting the result
 
 ## 5. User id in the web app

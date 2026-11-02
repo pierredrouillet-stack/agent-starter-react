@@ -193,3 +193,42 @@ def test_a_very_long_fact_is_capped_in_the_prompt():
 
     [line] = [row for row in prompt.splitlines() if row.startswith("- (2026-03-04)")]
     assert len(line) == len("- (2026-03-04) ") + 200
+
+
+CHARACTERS = [PERSONAS["tutor"], PERSONAS["storyteller"]]
+
+
+def test_the_default_persona_is_not_a_character():
+    assert DEFAULT_PERSONA.opener is None
+    assert "# Manner" not in DEFAULT_PERSONA.instructions
+
+
+@pytest.mark.parametrize("persona", CHARACTERS, ids=lambda p: p.id)
+def test_a_character_has_a_manner_a_signature_habit_and_an_opener(persona):
+    assert "# Manner" in persona.instructions
+    assert "signature habit" in persona.instructions
+    assert persona.opener
+    assert persona.role.startswith("You are ")
+
+
+@pytest.mark.parametrize("persona", CHARACTERS, ids=lambda p: p.id)
+def test_a_character_still_follows_the_shared_output_rules(persona):
+    prompt = persona.full_instructions()
+
+    assert OUTPUT_RULES in prompt
+    assert prompt.index(OUTPUT_RULES) < prompt.index("# Manner")
+    # The manner is about words and attitude, never formatting.
+    assert not re.search(r"[\U0001F300-\U0001FAFF]", prompt)
+    assert persona.opener is not None and "\n" not in persona.opener
+
+
+def test_characters_differ_in_manner_and_not_only_in_task():
+    def manner(persona):
+        section = persona.instructions.split("# Manner")[1].split("# Conversational")[0]
+        return set(re.findall(r"[a-z']+", section.lower()))
+
+    tutor, storyteller = (manner(p) for p in CHARACTERS)
+
+    overlap = len(tutor & storyteller) / len(tutor | storyteller)
+    assert overlap < 0.3
+    assert CHARACTERS[0].opener != CHARACTERS[1].opener
