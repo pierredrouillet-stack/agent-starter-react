@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   ended_at    TEXT,
   agent_name  TEXT,
   parent_id   TEXT,
-  persona     TEXT
+  persona     TEXT,
+  user_id     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -134,7 +135,7 @@ def open_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 5000")
     conn.executescript(SCHEMA)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(conversations)")}
-    for column in ("parent_id", "persona"):
+    for column in ("parent_id", "persona", "user_id"):
         if column not in columns:
             conn.execute(f"ALTER TABLE conversations ADD COLUMN {column} TEXT")
     return conn
@@ -147,6 +148,7 @@ def start_conversation(
     parent_id: str | None = None,
     copy_messages: Sequence[CarriedMessage] = (),
     persona: str | None = None,
+    user_id: str | None = None,
 ) -> None:
     """Upsert the conversation row; `copy_messages` land in the same transaction.
 
@@ -154,15 +156,15 @@ def start_conversation(
     """
     conn.execute("BEGIN")
     try:
-        # On conflict (a continued conversation) started_at, parent_id and persona
-        # are kept.
+        # On conflict (a continued conversation) started_at, parent_id, persona
+        # and user_id are kept.
         conn.execute(
             "INSERT INTO conversations "
-            "(id, started_at, ended_at, agent_name, parent_id, persona) "
-            "VALUES (?, ?, NULL, ?, ?, ?) "
+            "(id, started_at, ended_at, agent_name, parent_id, persona, user_id) "
+            "VALUES (?, ?, NULL, ?, ?, ?, ?) "
             "ON CONFLICT(id) DO UPDATE SET ended_at = NULL, "
             "agent_name = excluded.agent_name",
-            (conversation_id, iso_utc(), agent_name, parent_id, persona),
+            (conversation_id, iso_utc(), agent_name, parent_id, persona, user_id),
         )
         for n, message in enumerate(copy_messages):
             conn.execute(

@@ -3,7 +3,7 @@
 ## 1. Metadata and storage on the agent
 
 - [x] 1.1 Create `agent/src/memory.py` with `parse_user` (non-empty string, otherwise warn and return None) and relax `parse_resume` to ignore `persona` and `user` together while keeping every check on the `resume` body; verify with tests that existing `parse_resume` rejection cases still reject, that `{"user": "u", "resume": {...}}` yields the resume request, and that a non-string or empty user id is ignored with a warning
-- [ ] 1.2 Add the nullable `user_id` column to the schema and to `open_db`'s in-place migration, and write it in `start_conversation` (kept on a continued conversation); verify with tests that an old file gains the column without losing conversations, messages or personas, and that a new conversation stores its user id
+- [x] 1.2 Add the nullable `user_id` column to the schema and to `open_db`'s in-place migration, and write it in `start_conversation` (kept on a continued conversation); verify with tests that an old file gains the column without losing conversations, messages or personas, and that a new conversation stores its user id
 - [ ] 1.3 Add the `user_facts` table and index to the schema, plus helpers to load a user's facts, apply adds and removes in one transaction, and drop the oldest beyond the cap of 50; verify with tests for add, remove, duplicate text, cap eviction and rollback on a failing write
 - [ ] 1.4 Pass the user id from `my_agent` through `attach`/`Recorder`; verify `uv run ruff check`, `uv run ruff format --check` and `uv run pytest` pass in `agent/`
 

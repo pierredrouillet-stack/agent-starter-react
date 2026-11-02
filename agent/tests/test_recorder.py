@@ -403,3 +403,47 @@ def test_attach_fork_records_the_persona_that_ran_it(tmp_path, monkeypatch):
     persona = "SELECT persona FROM conversations WHERE id = ?"
     assert conn.execute(persona, ("room-2",)).fetchone() == ("tutor",)
     assert conn.execute(persona, ("c1",)).fetchone() == ("tutor",)
+
+
+def test_old_file_gains_user_id_and_keeps_rows(tmp_path):
+    path = str(tmp_path / "history.db")
+    old = sqlite3.connect(path)
+    old.executescript(OLD_SCHEMA)
+    old.execute("ALTER TABLE conversations ADD COLUMN persona TEXT")
+    old.execute(
+        "INSERT INTO conversations (id, started_at, agent_name, persona) "
+        "VALUES ('c1', '2026-01-01T00:00:00.000Z', 'a', 'tutor')"
+    )
+    old.execute(
+        "INSERT INTO messages VALUES "
+        "('m1', 'c1', 'user', 'hi', '2026-01-01T00:00:01.000Z', 0)"
+    )
+    old.commit()
+    old.close()
+
+    conn = open_db(path)
+
+    assert {"parent_id", "persona", "user_id"} <= _columns(conn)
+    assert conn.execute(
+        "SELECT id, persona, user_id FROM conversations"
+    ).fetchall() == [("c1", "tutor", None)]
+    assert conn.execute("SELECT id, content FROM messages").fetchall() == [("m1", "hi")]
+    open_db(path)
+
+
+def test_new_conversation_stores_its_user_id(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    start_conversation(conn, "room-1", "agent", user_id="u-1")
+    start_conversation(conn, "room-2", "agent")
+
+    assert conn.execute(
+        "SELECT id, user_id FROM conversations ORDER BY id"
+    ).fetchall() == [("room-1", "u-1"), ("room-2", None)]
+
+
+def test_continuing_keeps_the_stored_user_id(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    start_conversation(conn, "room-1", "agent", user_id="u-1")
+    start_conversation(conn, "room-1", "agent", user_id="u-2")
+
+    assert conn.execute("SELECT user_id FROM conversations").fetchall() == [("u-1",)]
