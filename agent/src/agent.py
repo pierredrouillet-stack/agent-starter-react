@@ -12,11 +12,21 @@ from livekit.agents import (
     TurnHandlingOptions,
     cli,
     inference,
+    llm,
     room_io,
 )
+from livekit.agents.types import NOT_GIVEN
 from livekit.plugins import ai_coustics
 
-from recorder import attach
+from recorder import (
+    CarriedMessage,
+    ResumeRequest,
+    attach,
+    db_path_from_env,
+    load_resume,
+    open_db,
+    parse_resume,
+)
 
 logger = logging.getLogger("agent")
 
@@ -26,9 +36,45 @@ load_dotenv(".env.local")
 AGENT_NAME = os.environ.get("AGENT_NAME", "pierre-assistant-dev")
 
 
+def resolve_resume(
+    metadata: str | None,
+) -> tuple[ResumeRequest | None, list[CarriedMessage]]:
+    """Read the resume request and its earlier messages; any failure means none."""
+    request = parse_resume(metadata)
+    if request is None:
+        return None, []
+    path = db_path_from_env()
+    if path is None:
+        logger.warning("ignoring resume request: CHAT_DB_PATH is not set")
+        return None, []
+    try:
+        conn = open_db(path)
+        try:
+            return request, load_resume(conn, request)
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("ignoring resume request: %s", exc)
+        return None, []
+
+
+def carried_chat_ctx(carried: list[CarriedMessage]) -> llm.ChatContext:
+    """Chat context holding the earlier messages, under their saved ids."""
+    chat_ctx = llm.ChatContext()
+    for message in carried:
+        chat_ctx.add_message(
+            role=message.role,  # type: ignore[arg-type]
+            content=message.content,
+            id=message.id,
+            interrupted=message.interrupted,
+        )
+    return chat_ctx
+
+
 class Assistant(Agent):
-    def __init__(self) -> None:
+    def __init__(self, chat_ctx: llm.ChatContext | None = None) -> None:
         super().__init__(
+            chat_ctx=chat_ctx if chat_ctx is not None else NOT_GIVEN,
             # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
             # See all available models at https://docs.livekit.io/agents/models/llm/
             llm=inference.LLM(model="google/gemma-4-31b-it"),
@@ -147,11 +193,12 @@ async def my_agent(ctx: JobContext):
         expressive=True,
     )
 
-    attach(session, ctx, AGENT_NAME)
+    resume, carried = resolve_resume(ctx.job.metadata)
+    attach(session, ctx, AGENT_NAME, resume, carried)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=Assistant(carried_chat_ctx(carried) if resume else None),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

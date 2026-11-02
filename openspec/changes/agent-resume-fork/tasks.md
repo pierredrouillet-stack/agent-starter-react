@@ -17,7 +17,7 @@
 
 ## 4. Agent wiring
 
-- [ ] 4.1 In `agent/src/agent.py` read `ctx.job.metadata`, call `parse_resume` and `load_resume`, log a warning and continue as an ordinary session on any failure, build a `ChatContext` from the carried messages and pass it to `Assistant(chat_ctx=...)`; add a test with a stub context covering malformed metadata, an unknown conversation and a valid request, and verify the ordinary path is unchanged for all failures.
+- [x] 4.1 In `agent/src/agent.py` read `ctx.job.metadata`, call `parse_resume` and `load_resume`, log a warning and continue as an ordinary session on any failure, build a `ChatContext` from the carried messages and pass it to `Assistant(chat_ctx=...)`; add a test with a stub context covering malformed metadata, an unknown conversation and a valid request, and verify the ordinary path is unchanged for all failures.
 - [ ] 4.2 After `session.start`, call `session.generate_reply` with a one-sentence welcome-back instruction only for a resumed session; verify with the agent debugger (`lk agent debugger`) that a resumed session greets first and refers to the earlier topic, and that an ordinary session does not greet.
 
 ## 5. Integration

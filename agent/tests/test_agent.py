@@ -48,3 +48,61 @@
 #
 #         # Ensures there are no function calls or other unexpected events
 #         result.expect.no_more_events()
+
+
+import json
+
+import pytest
+
+from agent import carried_chat_ctx, resolve_resume
+from recorder import open_db
+
+
+@pytest.fixture
+def history(tmp_path, monkeypatch):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+    conn = open_db(path)
+    conn.execute(
+        "INSERT INTO conversations (id, started_at) VALUES ('c1', '2026-01-01T00:00:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO messages VALUES "
+        "('m1', 'c1', 'user', 'hello', '2026-01-01T00:00:01Z', 0), "
+        "('m2', 'c1', 'assistant', 'hi there', '2026-01-01T00:00:02Z', 1)"
+    )
+    return conn
+
+
+def _meta(conversation_id, mode="continue"):
+    return json.dumps({"resume": {"conversation_id": conversation_id, "mode": mode}})
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [None, "", "not json", '{"resume":{"conversation_id":"c1","mode":"rewind"}}'],
+)
+def test_malformed_metadata_is_an_ordinary_session(history, metadata):
+    assert resolve_resume(metadata) == (None, [])
+
+
+def test_unknown_conversation_is_an_ordinary_session(history):
+    assert resolve_resume(_meta("missing")) == (None, [])
+
+
+def test_unset_history_path_is_an_ordinary_session(history, monkeypatch):
+    monkeypatch.delenv("CHAT_DB_PATH")
+    assert resolve_resume(_meta("c1")) == (None, [])
+
+
+def test_valid_request_carries_messages(history):
+    request, carried = resolve_resume(_meta("c1", "fork"))
+
+    assert (request.conversation_id, request.mode) == ("c1", "fork")
+    assert [(m.id, m.content) for m in carried] == [("m1", "hello"), ("m2", "hi there")]
+
+    chat_ctx = carried_chat_ctx(carried)
+    assert [(i.id, i.role, i.text_content, i.interrupted) for i in chat_ctx.items] == [
+        ("m1", "user", "hello", False),
+        ("m2", "assistant", "hi there", True),
+    ]
