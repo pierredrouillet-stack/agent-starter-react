@@ -10,7 +10,7 @@
 ## 2. Fact extraction after a call
 
 - [x] 2.1 Look up the current LiveKit Agents API for a one-off LLM call outside a session (use the `reading-livekit-docs` skill), then write `extract_facts` that builds the prompt from the numbered existing facts and this session's messages (skipping messages carried in from a resume) and parses the reply; verify with tests that feed canned model replies for valid, invalid JSON, wrong types, unknown ids, over-long facts and more than 10 adds
-- [ ] 2.2 Register an extraction shutdown callback after the recorder's, skipped when the session has no user id, no `CHAT_DB_PATH` or no user message, bounded by a timeout and a broad logged `except`; verify with tests that a raising or timing-out model leaves facts unchanged and that the session close is not affected
+- [x] 2.2 Register an extraction shutdown callback after the recorder's, skipped when the session has no user id, no `CHAT_DB_PATH` or no user message, bounded by a timeout and a broad logged `except`; verify with tests that a raising or timing-out model leaves facts unchanged and that the session close is not affected
 - [ ] 2.3 Document the `user` metadata key, the `user_id` column, the `user_facts` table, and the SQL to list and delete a user's facts in `docs/conversation-storage.md` and `agent/README.md`; verify the documented metadata example and SQL run against a seeded file in a test
 
 ## 3. Facts in the prompt

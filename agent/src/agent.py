@@ -17,7 +17,7 @@ from livekit.agents import (
 from livekit.agents.types import NOT_GIVEN
 from livekit.plugins import ai_coustics
 
-from memory import parse_user
+from memory import attach_memory, parse_user
 from personas import DEFAULT_PERSONA, Persona, persona_by_id, resolve_persona
 from recorder import (
     CarriedMessage,
@@ -102,6 +102,10 @@ TTS_MODEL = "fishaudio/s2.1-pro"
 DEFAULT_VOICE = "fa4c9eb3dccc4806b382b40d61c6b10a"
 
 
+# Model of every persona without its own LLM; it also extracts facts about the user.
+DEFAULT_LLM_MODEL = "google/gemma-4-31b-it"
+
+
 class Assistant(Agent):
     def __init__(
         self,
@@ -112,7 +116,7 @@ class Assistant(Agent):
             chat_ctx=chat_ctx if chat_ctx is not None else NOT_GIVEN,
             # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
             # See all available models at https://docs.livekit.io/agents/models/llm/
-            llm=persona.llm or inference.LLM(model="google/gemma-4-31b-it"),
+            llm=persona.llm or inference.LLM(model=DEFAULT_LLM_MODEL),
             # To use a realtime model instead of a voice pipeline, replace the LLM
             # with a realtime model and remove the STT/TTS from the AgentSession
             # (Note: This is for OpenAI GPT-Live, the recommended speech-to-speech
@@ -201,7 +205,15 @@ async def my_agent(ctx: JobContext):
     resume, carried = resolve_resume(ctx.job.metadata)
     persona = session_persona(ctx.job.metadata, resume)
     user_id = parse_user(ctx.job.metadata)
-    attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)
+    recorder = attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)
+    attach_memory(
+        session,
+        ctx,
+        user_id,
+        recorder.conversation_id,
+        inference.LLM(model=DEFAULT_LLM_MODEL),
+        {message.id for message in carried},
+    )
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(

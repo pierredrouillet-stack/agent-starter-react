@@ -3,6 +3,7 @@
 See docs/conversation-storage.md for the table this module reads and writes.
 """
 
+import asyncio
 import json
 import logging
 import sqlite3
@@ -11,7 +12,7 @@ from dataclasses import dataclass
 
 from livekit.agents import llm
 
-from recorder import iso_utc
+from recorder import db_path_from_env, iso_utc, open_db
 
 logger = logging.getLogger("memory")
 
@@ -205,3 +206,67 @@ async def extract_facts(
     )
     response = await model.chat(chat_ctx=chat_ctx).collect()
     return parse_changes(response.text, {fact.id for fact in existing})
+
+
+# Shutdown callbacks share the worker's shutdown_process_timeout of 10 seconds.
+EXTRACTION_TIMEOUT = 6.0
+
+
+async def update_facts(
+    session,
+    db_path: str,
+    model: llm.LLM,
+    user_id: str,
+    conversation_id: str,
+    carried_ids: set[str],
+    timeout: float = EXTRACTION_TIMEOUT,
+) -> None:
+    """Save what a finished session taught the agent about its user.
+
+    Never raises: a failing or slow model leaves the saved facts as they were.
+    """
+    try:
+        messages = session_messages(session.history.items, carried_ids)
+        if not any(role == "user" for role, _ in messages):
+            return
+        conn = open_db(db_path)
+        try:
+            existing = load_facts(conn, user_id)
+            changes = await asyncio.wait_for(
+                extract_facts(model, existing, messages), timeout
+            )
+            if changes is not None and (changes.add or changes.remove):
+                apply_changes(
+                    conn, user_id, changes.add, changes.remove, conversation_id
+                )
+        finally:
+            conn.close()
+    except asyncio.TimeoutError:
+        logger.warning("fact extraction took longer than %s seconds", timeout)
+    except Exception:
+        logger.exception("could not update the user's facts")
+
+
+def attach_memory(
+    session,
+    ctx,
+    user_id: str | None,
+    conversation_id: str,
+    model: llm.LLM,
+    carried_ids: set[str] = frozenset(),  # type: ignore[assignment]
+) -> bool:
+    """Save facts about the user when the job shuts down; True if registered.
+
+    Does nothing without a user id or a history file. Shutdown callbacks run
+    concurrently, which is fine: this reads the session's own history, not the
+    rows the recorder writes.
+    """
+    path = db_path_from_env()
+    if not user_id or path is None:
+        return False
+
+    async def _remember() -> None:
+        await update_facts(session, path, model, user_id, conversation_id, carried_ids)
+
+    ctx.add_shutdown_callback(_remember)
+    return True

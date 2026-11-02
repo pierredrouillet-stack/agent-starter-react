@@ -53,7 +53,7 @@ Alternative: a separate memory database. Rejected because `CHAT_DB_PATH` already
 
 ### 4. Extraction runs once, after the call
 
-A shutdown callback registered after the recorder's (callbacks run in order, so the transcript is closed first) does one LLM call:
+A shutdown callback does one LLM call. The SDK runs shutdown callbacks concurrently, not in order, so this one reads the session's own `session.history` and never depends on the recorder having closed the transcript:
 
 - Input: the existing facts (numbered by row id) and this session's user and assistant messages from `session.history`, skipping the messages carried in from a resume so old turns are not re-read.
 - Output: JSON `{"add": ["..."], "remove": [<row id>, ...]}`. A changed fact is a remove plus an add, so there is no separate update path to get wrong.
@@ -75,7 +75,7 @@ Alternatives: live `remember()` tools (adds latency and lets the model write mid
 
 - [Wrong or hallucinated facts get stated confidently] → Extract from user speech only, store the source conversation, keep a hard cap, and document SQL review and deletion.
 - [Stored text is replayed into the prompt, so a user (or anyone typing into the history file) could plant instructions] → Facts are flattened to a single line, length-capped, and framed as data; a test covers an instruction-like fact.
-- [The shutdown callback may be cut off by the worker's shutdown timeout] → Bound the LLM call with its own shorter timeout and apply the writes atomically; a missed extraction loses one call's facts and nothing else. Verify the actual limit while implementing.
+- [The shutdown callback may be cut off by the worker's shutdown timeout] → Bound the LLM call with its own shorter timeout (6 seconds, under the worker's `shutdown_process_timeout` of 10 seconds, verified in the SDK source) and apply the writes atomically; a missed extraction loses one call's facts and nothing else.
 - [The browser id is spoofable and lost when site data is cleared] → Accepted. It is not a security boundary, and the loss only resets memory.
 - [Persona and user facts both change the prompt, so character may drift] → Keep the facts block short and after the persona text; review with a short scenario run.
 - [Extra token cost per call] → One small call at the end, skipped when the user said nothing.

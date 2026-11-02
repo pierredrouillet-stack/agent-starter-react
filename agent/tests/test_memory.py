@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import sqlite3
@@ -12,10 +13,12 @@ from memory import (
     Changes,
     Fact,
     apply_changes,
+    attach_memory,
     extract_facts,
     load_facts,
     parse_user,
     session_messages,
+    update_facts,
 )
 from recorder import open_db
 
@@ -317,3 +320,140 @@ def test_session_messages_skips_carried_empty_and_other_items():
         ("user", "I'm a nurse"),
         ("assistant", "Nice"),
     ]
+
+
+class _FakeSession:
+    def __init__(self, items):
+        self.history = SimpleNamespace(items=items)
+
+
+def _talk():
+    return _FakeSession(
+        [_item("m1", "user", "I'm a nurse"), _item("m2", "assistant", "Nice")]
+    )
+
+
+async def test_update_facts_saves_what_the_model_found(tmp_path):
+    path = str(tmp_path / "history.db")
+    model = _FakeLLM('{"add": ["Is a nurse"], "remove": []}')
+
+    await update_facts(_talk(), path, model, "u-1", "room-1", set())
+
+    [fact] = load_facts(open_db(path), "u-1")
+    assert (fact.text, fact.source_conversation_id) == ("Is a nurse", "room-1")
+
+
+async def test_update_facts_sends_the_saved_facts_to_the_model(tmp_path):
+    path = str(tmp_path / "history.db")
+    apply_changes(open_db(path), "u-1", ["Likes tea"], [], None)
+    model = _FakeLLM('{"add": [], "remove": []}')
+
+    await update_facts(_talk(), path, model, "u-1", "room-1", set())
+
+    assert "1. Likes tea" in model.contexts[0].messages()[1].text_content
+
+
+async def test_update_facts_skips_a_session_without_user_speech(tmp_path):
+    path = str(tmp_path / "history.db")
+    model = _FakeLLM('{"add": ["x"], "remove": []}')
+    session = _FakeSession([_item("m1", "assistant", "Hello")])
+    carried_only = _FakeSession([_item("c1:0", "user", "old")])
+
+    await update_facts(session, path, model, "u-1", "room-1", set())
+    await update_facts(carried_only, path, model, "u-1", "room-1", {"c1:0"})
+
+    assert model.contexts == []
+
+
+async def test_update_facts_leaves_facts_unchanged_when_the_model_raises(
+    tmp_path, caplog
+):
+    path = str(tmp_path / "history.db")
+    apply_changes(open_db(path), "u-1", ["Likes tea"], [], None)
+
+    class Broken:
+        def chat(self, *, chat_ctx):
+            raise RuntimeError("down")
+
+    with caplog.at_level(logging.ERROR, logger="memory"):
+        await update_facts(_talk(), path, Broken(), "u-1", "room-1", set())
+
+    assert _texts(open_db(path)) == ["Likes tea"]
+    assert len(caplog.records) == 1
+
+
+async def test_update_facts_leaves_facts_unchanged_when_the_model_is_slow(
+    tmp_path, caplog
+):
+    path = str(tmp_path / "history.db")
+    apply_changes(open_db(path), "u-1", ["Likes tea"], [], None)
+
+    class Slow:
+        def chat(self, *, chat_ctx):
+            return self
+
+        async def collect(self):
+            await asyncio.sleep(5)
+
+    with caplog.at_level(logging.WARNING, logger="memory"):
+        await update_facts(_talk(), path, Slow(), "u-1", "room-1", set(), timeout=0.05)
+
+    assert _texts(open_db(path)) == ["Likes tea"]
+    assert len(caplog.records) == 1
+
+
+async def test_update_facts_ignores_an_unusable_reply(tmp_path):
+    path = str(tmp_path / "history.db")
+    apply_changes(open_db(path), "u-1", ["Likes tea"], [], None)
+
+    await update_facts(_talk(), path, _FakeLLM("nope"), "u-1", "room-1", set())
+
+    assert _texts(open_db(path)) == ["Likes tea"]
+
+
+async def test_update_facts_survives_an_unopenable_database(tmp_path, caplog):
+    with caplog.at_level(logging.ERROR, logger="memory"):
+        await update_facts(
+            _talk(), str(tmp_path), _FakeLLM("{}"), "u-1", "room-1", set()
+        )
+
+    assert len(caplog.records) == 1
+
+
+class _FakeCtx:
+    def __init__(self):
+        self.callbacks = []
+
+    def add_shutdown_callback(self, callback):
+        self.callbacks.append(callback)
+
+
+async def test_attach_memory_registers_a_callback_that_saves_facts(
+    tmp_path, monkeypatch
+):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+    ctx = _FakeCtx()
+    model = _FakeLLM('{"add": ["Is a nurse"], "remove": []}')
+
+    assert attach_memory(_talk(), ctx, "u-1", "room-1", model) is True
+    [callback] = ctx.callbacks
+    await callback()
+
+    assert _texts(open_db(path)) == ["Is a nurse"]
+
+
+def test_attach_memory_is_skipped_without_a_user_id(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHAT_DB_PATH", str(tmp_path / "history.db"))
+    ctx = _FakeCtx()
+
+    assert attach_memory(_talk(), ctx, None, "room-1", _FakeLLM("{}")) is False
+    assert ctx.callbacks == []
+
+
+def test_attach_memory_is_skipped_without_a_history_file(monkeypatch):
+    monkeypatch.delenv("CHAT_DB_PATH", raising=False)
+    ctx = _FakeCtx()
+
+    assert attach_memory(_talk(), ctx, "u-1", "room-1", _FakeLLM("{}")) is False
+    assert ctx.callbacks == []
