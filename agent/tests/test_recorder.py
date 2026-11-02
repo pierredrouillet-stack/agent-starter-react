@@ -326,3 +326,48 @@ def test_attach_resume_skips_seeded_items_on_close(tmp_path, monkeypatch, mode):
             ("c1:0", "user", "hello"),
             ("c1:1", "assistant", "hi there"),
         ]
+
+
+def test_old_file_gains_persona_and_keeps_rows(tmp_path):
+    path = str(tmp_path / "history.db")
+    old = sqlite3.connect(path)
+    old.executescript(OLD_SCHEMA)
+    old.execute(
+        "INSERT INTO conversations VALUES ('c1', '2026-01-01T00:00:00.000Z', NULL, 'a')"
+    )
+    old.execute(
+        "INSERT INTO messages VALUES "
+        "('m1', 'c1', 'user', 'hi', '2026-01-01T00:00:01.000Z', 0)"
+    )
+    old.commit()
+    old.close()
+
+    conn = open_db(path)
+
+    assert {"parent_id", "persona"} <= _columns(conn)
+    assert conn.execute("SELECT id, persona FROM conversations").fetchall() == [
+        ("c1", None)
+    ]
+    assert conn.execute("SELECT id, content FROM messages").fetchall() == [("m1", "hi")]
+    open_db(path)
+
+
+def test_new_conversation_stores_its_persona(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    start_conversation(conn, "room-1", "agent", persona="tutor")
+    start_conversation(conn, "room-2", "agent")
+
+    assert conn.execute(
+        "SELECT id, persona FROM conversations ORDER BY id"
+    ).fetchall() == [
+        ("room-1", "tutor"),
+        ("room-2", None),
+    ]
+
+
+def test_continuing_keeps_the_stored_persona(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    start_conversation(conn, "room-1", "agent", persona="tutor")
+    start_conversation(conn, "room-1", "agent", persona="storyteller")
+
+    assert conn.execute("SELECT persona FROM conversations").fetchall() == [("tutor",)]

@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   started_at  TEXT NOT NULL,
   ended_at    TEXT,
   agent_name  TEXT,
-  parent_id   TEXT
+  parent_id   TEXT,
+  persona     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -124,8 +125,9 @@ def open_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 5000")
     conn.executescript(SCHEMA)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(conversations)")}
-    if "parent_id" not in columns:
-        conn.execute("ALTER TABLE conversations ADD COLUMN parent_id TEXT")
+    for column in ("parent_id", "persona"):
+        if column not in columns:
+            conn.execute(f"ALTER TABLE conversations ADD COLUMN {column} TEXT")
     return conn
 
 
@@ -135,6 +137,7 @@ def start_conversation(
     agent_name: str | None,
     parent_id: str | None = None,
     copy_messages: Sequence[CarriedMessage] = (),
+    persona: str | None = None,
 ) -> None:
     """Upsert the conversation row; `copy_messages` land in the same transaction.
 
@@ -142,14 +145,15 @@ def start_conversation(
     """
     conn.execute("BEGIN")
     try:
-        # On conflict (a continued conversation) started_at and parent_id are kept.
+        # On conflict (a continued conversation) started_at, parent_id and persona
+        # are kept.
         conn.execute(
             "INSERT INTO conversations "
-            "(id, started_at, ended_at, agent_name, parent_id) "
-            "VALUES (?, ?, NULL, ?, ?) "
+            "(id, started_at, ended_at, agent_name, parent_id, persona) "
+            "VALUES (?, ?, NULL, ?, ?, ?) "
             "ON CONFLICT(id) DO UPDATE SET ended_at = NULL, "
             "agent_name = excluded.agent_name",
-            (conversation_id, iso_utc(), agent_name, parent_id),
+            (conversation_id, iso_utc(), agent_name, parent_id, persona),
         )
         for n, message in enumerate(copy_messages):
             conn.execute(
@@ -216,11 +220,13 @@ class Recorder:
         agent_name: str | None,
         parent_id: str | None = None,
         copy_messages: Sequence[CarriedMessage] = (),
+        persona: str | None = None,
     ) -> None:
         self.conversation_id = conversation_id
         self.agent_name = agent_name
         self.parent_id = parent_id
         self.copy_messages = copy_messages
+        self.persona = persona
         self._conn: sqlite3.Connection | None = None
         self._enabled = False
         path = db_path_from_env()
@@ -255,6 +261,7 @@ class Recorder:
             self.agent_name,
             self.parent_id,
             self.copy_messages,
+            self.persona,
         )
 
     def save_message(
@@ -285,24 +292,27 @@ def attach(
     agent_name: str | None,
     resume: ResumeRequest | None = None,
     carried: Sequence[CarriedMessage] = (),
+    persona: str | None = None,
 ) -> Recorder:
     """Record `session` to the history file. Call before `session.start`.
 
     With `resume`, a continued conversation is recorded under its original id and
     a forked one under the room name, with `carried` copied into it. `carried`
     must be what seeded the session's chat context, under the same message ids.
+    `persona` is the id of the persona the session runs with.
     """
     if resume is not None and resume.mode == "continue":
-        recorder = Recorder(resume.conversation_id, agent_name)
+        recorder = Recorder(resume.conversation_id, agent_name, persona=persona)
     elif resume is not None:
         recorder = Recorder(
             ctx.room.name,
             agent_name,
             parent_id=resume.conversation_id,
             copy_messages=carried,
+            persona=persona,
         )
     else:
-        recorder = Recorder(ctx.room.name, agent_name)
+        recorder = Recorder(ctx.room.name, agent_name, persona=persona)
     # Seeded items sit in session.history but are already stored; skip them on close.
     saved: set[str] = {message.id for message in carried}
     ended = False
