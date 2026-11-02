@@ -28,7 +28,7 @@
 ## 5. User id in the web app
 
 - [x] 5.1 Add `lib/user-id.ts` that creates and reads the id in `localStorage`, tolerating unavailable storage, and extend `buildAgentMetadata` in `lib/resume.ts` with a `user` field; verify with `pnpm lint`, `pnpm format:check`, `pnpm build` and by reading the produced JSON for persona-only, resume-only, both, and each with a user id
-- [ ] 5.2 Read the id into state in `App` after mount and pass it in the session options only when `agentName` is set; verify in dev that the metadata reaching the token request holds the same id after a reload and none when `AGENT_NAME` is blank
+- [x] 5.2 Read the id into state in `App` after mount and pass it in the session options only when `agentName` is set; verify in dev that the metadata reaching the token request holds the same id after a reload and none when `AGENT_NAME` is blank
 
 ## 6. End-to-end check
 

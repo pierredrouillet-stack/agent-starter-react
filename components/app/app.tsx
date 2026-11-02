@@ -13,6 +13,7 @@ import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
 import { DEFAULT_PERSONA_ID } from '@/lib/personas';
 import { type ResumeRequest, buildAgentMetadata } from '@/lib/resume';
+import { getUserId } from '@/lib/user-id';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -50,13 +51,22 @@ export function App({
 
   const [personaId, setPersonaId] = useState(DEFAULT_PERSONA_ID);
 
+  // localStorage only exists in the browser, so the id is read after mount. useSession honors
+  // option changes, so a call started right after load still carries it.
+  const [userId, setUserId] = useState<string>();
+  useEffect(() => setUserId(getUserId()), []);
+
   // A resumed conversation already has a persona, so the picker's choice is not sent with it.
+  // Metadata only reaches a named agent, so the user id is sent only with an agent name.
   const session = useSession(
     tokenSource,
     agentName
       ? {
           agentName,
-          agentMetadata: buildAgentMetadata(resume ? { resume } : { persona: personaId }),
+          agentMetadata: buildAgentMetadata({
+            user: userId,
+            ...(resume ? { resume } : { persona: personaId }),
+          }),
         }
       : undefined
   );
