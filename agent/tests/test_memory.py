@@ -1,9 +1,22 @@
+import json
 import logging
 import sqlite3
+from types import SimpleNamespace
 
 import pytest
 
-from memory import MAX_FACTS, apply_changes, load_facts, parse_user
+from memory import (
+    EXTRACTION_PROMPT,
+    MAX_FACT_LENGTH,
+    MAX_FACTS,
+    Changes,
+    Fact,
+    apply_changes,
+    extract_facts,
+    load_facts,
+    parse_user,
+    session_messages,
+)
 from recorder import open_db
 
 
@@ -174,3 +187,133 @@ def test_a_failing_write_rolls_everything_back(tmp_path):
 
     assert _texts(conn) == ["Likes tea"]
     assert not conn.in_transaction
+
+
+class _FakeStream:
+    def __init__(self, text):
+        self._text = text
+
+    async def collect(self):
+        return SimpleNamespace(text=self._text)
+
+
+class _FakeLLM:
+    def __init__(self, text):
+        self.text = text
+        self.contexts = []
+
+    def chat(self, *, chat_ctx):
+        self.contexts.append(chat_ctx)
+        return _FakeStream(self.text)
+
+
+def _facts(*texts):
+    return [
+        Fact(n, text, "2026-01-01T00:00:00.000Z", None)
+        for n, text in enumerate(texts, 1)
+    ]
+
+
+async def test_extract_facts_reads_a_valid_reply():
+    model = _FakeLLM('{"add": ["Is a nurse"], "remove": [1]}')
+
+    changes = await extract_facts(model, _facts("Likes tea"), [("user", "I'm a nurse")])
+
+    assert changes == Changes(add=["Is a nurse"], remove=[1])
+
+
+async def test_extract_facts_prompt_holds_numbered_facts_and_the_transcript():
+    model = _FakeLLM('{"add": [], "remove": []}')
+
+    await extract_facts(
+        model, _facts("Likes tea"), [("user", "hello"), ("assistant", "hi")]
+    )
+
+    [ctx] = model.contexts
+    system, user = ctx.messages()
+    assert system.text_content == EXTRACTION_PROMPT
+    assert "1. Likes tea" in user.text_content
+    assert "user: hello\nassistant: hi" in user.text_content
+
+
+async def test_extract_facts_prompt_without_facts_says_none():
+    model = _FakeLLM('{"add": [], "remove": []}')
+
+    await extract_facts(model, [], [("user", "hello")])
+
+    assert "(none)" in model.contexts[0].messages()[1].text_content
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "not json",
+        "[]",
+        '"add"',
+        '{"add": "Is a nurse", "remove": []}',
+        '{"add": [3], "remove": []}',
+        '{"add": [""], "remove": []}',
+        '{"add": [], "remove": ["1"]}',
+        '{"add": [], "remove": [true]}',
+        '{"add": [], "remove": [99]}',
+        '{"add": [], "remove": [], "extra": 1}',
+        '{"add": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]}',
+    ],
+)
+async def test_extract_facts_refuses_unusable_replies(reply, caplog):
+    model = _FakeLLM(reply)
+
+    with caplog.at_level(logging.WARNING, logger="memory"):
+        assert await extract_facts(model, _facts("Likes tea"), [("user", "x")]) is None
+    assert len(caplog.records) == 1
+
+
+async def test_extract_facts_accepts_ten_additions_and_missing_keys():
+    ten = ", ".join(f'"fact {n}"' for n in range(10))
+
+    assert len((await extract_facts(_FakeLLM(f'{{"add": [{ten}]}}'), [], [])).add) == 10
+    assert await extract_facts(_FakeLLM("{}"), [], []) == Changes([], [])
+
+
+async def test_extract_facts_cuts_long_facts_and_flattens_lines():
+    long = "x" * 500
+    model = _FakeLLM(json.dumps({"add": [long, "two\nlines  here"], "remove": []}))
+
+    changes = await extract_facts(model, [], [("user", "x")])
+
+    assert changes.add == ["x" * MAX_FACT_LENGTH, "two lines here"]
+
+
+async def test_extract_facts_accepts_a_fenced_reply_and_dedupes_removals():
+    model = _FakeLLM('```json\n{"add": [], "remove": [1, 1]}\n```')
+
+    assert await extract_facts(model, _facts("a"), []) == Changes([], [1])
+
+
+async def test_extract_facts_lets_model_errors_propagate():
+    class Broken:
+        def chat(self, *, chat_ctx):
+            raise RuntimeError("down")
+
+    with pytest.raises(RuntimeError):
+        await extract_facts(Broken(), [], [("user", "x")])
+
+
+def _item(item_id, role, text, kind="message"):
+    return SimpleNamespace(id=item_id, type=kind, role=role, text_content=text)
+
+
+def test_session_messages_skips_carried_empty_and_other_items():
+    items = [
+        _item("c1:0", "user", "old"),
+        _item("m1", "user", "I'm a nurse"),
+        _item("m2", "assistant", "Nice"),
+        _item("m3", "assistant", ""),
+        _item("m4", "system", "rules"),
+        _item("f1", "assistant", "x", kind="function_call"),
+    ]
+
+    assert session_messages(items, {"c1:0"}) == [
+        ("user", "I'm a nurse"),
+        ("assistant", "Nice"),
+    ]
