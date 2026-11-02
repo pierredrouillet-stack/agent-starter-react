@@ -1,6 +1,10 @@
+import json
+import logging
 import textwrap
 
-from personas import DEFAULT_PERSONA, PERSONAS
+import pytest
+
+from personas import DEFAULT_PERSONA, PERSONAS, parse_persona, resolve_persona
 
 # The Assistant prompt as it was before personas existed.
 ORIGINAL_ASSISTANT_PROMPT = textwrap.dedent(
@@ -55,3 +59,50 @@ def test_every_persona_carries_the_shared_rules():
         text = persona.full_instructions()
         assert "# Output rules" in text
         assert "# Guardrails" in text
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        None,
+        "",
+        "not json",
+        "[]",
+        "{}",
+        '{"resume": {"conversation_id": "c1", "mode": "fork"}}',
+    ],
+)
+def test_no_persona_requested_runs_default(metadata, caplog):
+    with caplog.at_level(logging.WARNING, logger="personas"):
+        assert resolve_persona(metadata) is DEFAULT_PERSONA
+    assert caplog.records == []
+
+
+@pytest.mark.parametrize("value", ["", 3, None, ["tutor"], {"id": "tutor"}])
+def test_non_string_persona_runs_default_and_warns(value, caplog):
+    with caplog.at_level(logging.WARNING, logger="personas"):
+        assert resolve_persona(json.dumps({"persona": value})) is DEFAULT_PERSONA
+    assert len(caplog.records) == 1
+
+
+def test_unknown_persona_runs_default_and_warns(caplog):
+    with caplog.at_level(logging.WARNING, logger="personas"):
+        assert resolve_persona('{"persona": "nobody"}') is DEFAULT_PERSONA
+    assert "nobody" in caplog.text
+
+
+@pytest.mark.parametrize("persona_id", list(PERSONAS))
+def test_known_persona_is_returned(persona_id):
+    metadata = json.dumps({"persona": persona_id})
+    assert parse_persona(metadata) == persona_id
+    assert resolve_persona(metadata) is PERSONAS[persona_id]
+
+
+def test_persona_beside_resume_is_read():
+    metadata = json.dumps(
+        {
+            "persona": "tutor",
+            "resume": {"conversation_id": "c1", "mode": "continue"},
+        }
+    )
+    assert resolve_persona(metadata) is PERSONAS["tutor"]

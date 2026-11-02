@@ -3,10 +3,14 @@
 The web app lists the same ids in lib/personas.ts. Keep the two in step.
 """
 
+import json
+import logging
 import textwrap
 from dataclasses import dataclass
 
 from livekit.agents import inference
+
+logger = logging.getLogger("personas")
 
 
 @dataclass(frozen=True)
@@ -112,3 +116,36 @@ _PERSONAS = (
 )
 
 PERSONAS: dict[str, Persona] = {persona.id: persona for persona in _PERSONAS}
+
+
+def parse_persona(metadata: str | None) -> str | None:
+    """Read a persona id from job metadata; None if absent or unusable."""
+    if not metadata or not metadata.strip():
+        return None
+    try:
+        data = json.loads(metadata)
+    except ValueError:
+        return None  # not ours to report: parse_resume logs unusable metadata
+    if not isinstance(data, dict) or "persona" not in data:
+        return None
+    persona_id = data["persona"]
+    if not isinstance(persona_id, str) or not persona_id:
+        logger.warning("ignoring persona: expected a non-empty string")
+        return None
+    return persona_id
+
+
+def persona_by_id(persona_id: str | None) -> Persona:
+    """The persona with this id; the default when it is None or unknown."""
+    if persona_id is None:
+        return DEFAULT_PERSONA
+    persona = PERSONAS.get(persona_id)
+    if persona is None:
+        logger.warning("unknown persona %r; using %r", persona_id, DEFAULT_PERSONA.id)
+        return DEFAULT_PERSONA
+    return persona
+
+
+def resolve_persona(metadata: str | None) -> Persona:
+    """The persona requested by job metadata, falling back to the default."""
+    return persona_by_id(parse_persona(metadata))
