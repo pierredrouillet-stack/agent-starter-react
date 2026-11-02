@@ -111,6 +111,12 @@ In production, run the agent directly:
 uv run src/agent.py start
 ```
 
+## Personas
+
+`src/personas.py` holds a registry of personas. Each has an id, a one-sentence `role`, `instructions` describing its goals and manner, and optionally its own TTS `voice` id and `llm`. The voice-output rules, tool guidance and guardrails are shared by every persona, so a persona only describes its character. `assistant` is the default and its prompt is unchanged from before personas existed; `tutor` and `storyteller` are placeholders to rewrite.
+
+To add one, add a `Persona` to `_PERSONAS` and a matching entry (id, name, description) to `lib/personas.ts` in the web app. The web app sends the chosen id in the dispatch metadata (`{"persona": "tutor"}`, see [`docs/conversation-storage.md`](../docs/conversation-storage.md)); an unknown id runs the default persona and logs a warning. The persona is saved with the conversation and restored on resume and fork. Personas need explicit dispatch (`AGENT_NAME`), like resume.
+
 ## Resume a saved conversation
 
 The worker saves each session to the SQLite file named by `CHAT_DB_PATH` and can pick up a saved conversation from it. The metadata contract is in [`docs/conversation-storage.md`](../docs/conversation-storage.md); the web app's `/history` page sends it for you, but only to a worker that has no development deployment, so start that worker with `uv run python src/agent.py dev` rather than `lk agent dev` (the app's token server dispatches to the default deployment). To send it by hand with `lk dispatch`, run the worker with the same `CHAT_DB_PATH` and dispatch it by name (`AGENT_NAME`, default `pierre-assistant-dev`):

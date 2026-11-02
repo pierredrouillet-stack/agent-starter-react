@@ -1,10 +1,13 @@
 import json
 import logging
+import re
 import textwrap
+from pathlib import Path
 
 import pytest
 
 from personas import DEFAULT_PERSONA, PERSONAS, parse_persona, resolve_persona
+from recorder import ResumeRequest, parse_resume
 
 # The Assistant prompt as it was before personas existed.
 ORIGINAL_ASSISTANT_PROMPT = textwrap.dedent(
@@ -106,3 +109,18 @@ def test_persona_beside_resume_is_read():
         }
     )
     assert resolve_persona(metadata) is PERSONAS["tutor"]
+
+
+def test_documented_metadata_examples_parse():
+    doc = (Path(__file__).parents[2] / "docs" / "conversation-storage.md").read_text()
+    section = doc.split("## Choosing a persona")[1]
+    examples = [
+        json.loads(block) for block in re.findall(r"```json\n(.*?)```", section, re.S)
+    ]
+
+    assert len(examples) == 2
+    for example in examples:
+        assert resolve_persona(json.dumps(example)) is PERSONAS[example["persona"]]
+    assert parse_resume(json.dumps(examples[1])) == ResumeRequest(
+        "<conversations.id>", "continue"
+    )

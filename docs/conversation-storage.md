@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   started_at  TEXT NOT NULL,      -- ISO 8601 UTC
   ended_at    TEXT,               -- NULL while in progress
   agent_name  TEXT,
-  parent_id   TEXT REFERENCES conversations(id)  -- NULL unless forked from another conversation
+  parent_id   TEXT REFERENCES conversations(id),  -- NULL unless forked from another conversation
+  persona     TEXT                -- id of the persona that ran it; NULL means the default persona
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -42,6 +43,10 @@ CREATE TABLE IF NOT EXISTS messages (
   interrupted      INTEGER NOT NULL DEFAULT 0
 );
 ```
+
+`persona` was added after the first version of this schema. The agent adds it to an older file with
+`ALTER TABLE` when it opens it, so the app MUST NOT assume the column exists. A conversation saved
+before personas existed has `persona = NULL` and is treated as having run with the default persona.
 
 The reader selects explicit columns, so extra columns (latency, tool calls, ...) can be added without
 breaking it. Messages whose `role` is neither `user` nor `assistant` are ignored.
@@ -81,3 +86,32 @@ the room name for fresh starts.
   `conversation_id`. Write new messages under the new id; the original conversation is left unchanged.
 
 The app only offers these actions for conversations that have ended and have at least one message.
+
+## Choosing a persona
+
+The agent can run as one of several personas, each with its own instructions and optionally its own
+voice. The welcome screen of this app lists them and sends the choice in the same dispatch metadata,
+under a `persona` key next to `resume`. Both keys are optional:
+
+```json
+{ "persona": "tutor" }
+```
+
+```json
+{
+  "persona": "tutor",
+  "resume": { "conversation_id": "<conversations.id>", "mode": "continue" }
+}
+```
+
+- A missing, empty, non-string or unknown `persona` runs the agent's default persona, and the agent
+  logs why. The call is never refused, and a valid `resume` is never dropped because of a bad persona.
+- The agent writes the persona it actually ran to `conversations.persona`, so it holds the default
+  persona's id when the requested one was unknown.
+- On `continue` and `fork` the agent ignores the metadata's `persona` and runs the persona saved with
+  `conversation_id` (the default when that is `NULL` or no longer exists). The app sends no persona
+  with a resume. A fork stores the persona that ran it.
+
+The ids live in two places that must be kept in step: `PERSONAS` in `agent/src/personas.py` (full
+configuration) and `lib/personas.ts` (id, name and description for the picker). Like resume, this
+needs explicit dispatch, so the picker is shown only when `AGENT_NAME` is set.
