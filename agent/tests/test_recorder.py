@@ -447,3 +447,46 @@ def test_continuing_keeps_the_stored_user_id(tmp_path):
     start_conversation(conn, "room-1", "agent", user_id="u-2")
 
     assert conn.execute("SELECT user_id FROM conversations").fetchall() == [("u-1",)]
+
+
+def test_attach_ordinary_session_records_the_user_id(tmp_path, monkeypatch):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+
+    attach(_FakeSession([]), _FakeCtx("room-1"), "a", user_id="u-1")
+    attach(_FakeSession([]), _FakeCtx("room-2"), "a")
+
+    conn = open_db(path)
+    assert conn.execute(
+        "SELECT id, user_id FROM conversations ORDER BY id"
+    ).fetchall() == [("room-1", "u-1"), ("room-2", None)]
+
+
+def test_attach_continue_and_fork_record_the_user_id(tmp_path, monkeypatch):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+    conn = open_db(path)
+    _seed(conn, "c1", [("user", "hello")])
+    carried = load_resume(conn, ResumeRequest("c1", "fork"))
+
+    attach(
+        _FakeSession([]),
+        _FakeCtx("room-2"),
+        "a",
+        ResumeRequest("c1", "fork"),
+        carried,
+        user_id="u-1",
+    )
+    attach(
+        _FakeSession([]),
+        _FakeCtx("room-3"),
+        "a",
+        ResumeRequest("c1", "continue"),
+        carried,
+        user_id="u-1",
+    )
+
+    rows = dict(conn.execute("SELECT id, user_id FROM conversations").fetchall())
+    # A fork is a new conversation for this user; a continued one, saved without a
+    # user id before, keeps that.
+    assert rows == {"c1": None, "room-2": "u-1"}

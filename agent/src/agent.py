@@ -17,6 +17,7 @@ from livekit.agents import (
 from livekit.agents.types import NOT_GIVEN
 from livekit.plugins import ai_coustics
 
+from memory import parse_user
 from personas import DEFAULT_PERSONA, Persona, persona_by_id, resolve_persona
 from recorder import (
     CarriedMessage,
@@ -199,7 +200,8 @@ async def my_agent(ctx: JobContext):
 
     resume, carried = resolve_resume(ctx.job.metadata)
     persona = session_persona(ctx.job.metadata, resume)
-    attach(session, ctx, AGENT_NAME, resume, carried, persona.id)
+    user_id = parse_user(ctx.job.metadata)
+    attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(

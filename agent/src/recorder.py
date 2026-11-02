@@ -242,12 +242,14 @@ class Recorder:
         parent_id: str | None = None,
         copy_messages: Sequence[CarriedMessage] = (),
         persona: str | None = None,
+        user_id: str | None = None,
     ) -> None:
         self.conversation_id = conversation_id
         self.agent_name = agent_name
         self.parent_id = parent_id
         self.copy_messages = copy_messages
         self.persona = persona
+        self.user_id = user_id
         self._conn: sqlite3.Connection | None = None
         self._enabled = False
         path = db_path_from_env()
@@ -283,6 +285,7 @@ class Recorder:
             self.parent_id,
             self.copy_messages,
             self.persona,
+            self.user_id,
         )
 
     def save_message(
@@ -314,16 +317,20 @@ def attach(
     resume: ResumeRequest | None = None,
     carried: Sequence[CarriedMessage] = (),
     persona: str | None = None,
+    user_id: str | None = None,
 ) -> Recorder:
     """Record `session` to the history file. Call before `session.start`.
 
     With `resume`, a continued conversation is recorded under its original id and
     a forked one under the room name, with `carried` copied into it. `carried`
     must be what seeded the session's chat context, under the same message ids.
-    `persona` is the id of the persona the session runs with.
+    `persona` is the id of the persona the session runs with, `user_id` the
+    anonymous id of the user it was told about.
     """
     if resume is not None and resume.mode == "continue":
-        recorder = Recorder(resume.conversation_id, agent_name, persona=persona)
+        recorder = Recorder(
+            resume.conversation_id, agent_name, persona=persona, user_id=user_id
+        )
     elif resume is not None:
         recorder = Recorder(
             ctx.room.name,
@@ -331,9 +338,10 @@ def attach(
             parent_id=resume.conversation_id,
             copy_messages=carried,
             persona=persona,
+            user_id=user_id,
         )
     else:
-        recorder = Recorder(ctx.room.name, agent_name, persona=persona)
+        recorder = Recorder(ctx.room.name, agent_name, persona=persona, user_id=user_id)
     # Seeded items sit in session.history but are already stored; skip them on close.
     saved: set[str] = {message.id for message in carried}
     ended = False
