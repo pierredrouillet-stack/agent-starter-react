@@ -3,7 +3,7 @@
 ## 1. Persona registry on the agent
 
 - [x] 1.1 Create `agent/src/personas.py` with the `Persona` dataclass, the shared voice-output rules, `DEFAULT_PERSONA` and a registry holding the default plus two placeholder personas; verify with a new `agent/tests/test_personas.py` that the default persona's final instructions match today's `Assistant` prompt and that every persona has a unique id
-- [ ] 1.2 Build `Assistant` from a persona (instructions, and `tts`/`llm` only when the persona defines them) and verify `uv run pytest agent/tests/test_agent.py` still passes with the default persona
+- [x] 1.2 Build `Assistant` from a persona (instructions, and `tts`/`llm` only when the persona defines them) and verify `uv run pytest agent/tests/test_agent.py` still passes with the default persona
 - [ ] 1.3 Add `parse_persona` and a `resolve_persona` helper that falls back to the default and logs for a missing, non-string or unknown id; verify with table-driven tests for each case in the `agent-personas` spec
 
 ## 2. Metadata and recording
