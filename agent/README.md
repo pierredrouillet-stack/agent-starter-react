@@ -111,6 +111,25 @@ In production, run the agent directly:
 uv run src/agent.py start
 ```
 
+## Resume a saved conversation
+
+The worker saves each session to the SQLite file named by `CHAT_DB_PATH` and can pick up a saved conversation from it. The metadata contract is in [`docs/conversation-storage.md`](../docs/conversation-storage.md); the web app's `/history` page sends it for you. To send it by hand, run the worker with the same `CHAT_DB_PATH` and dispatch it by name (`AGENT_NAME`, default `pierre-assistant-dev`):
+
+```console
+export CHAT_DB_PATH=/absolute/path/to/history.db
+lk agent dev
+```
+
+`lk agent dev` registers under a development deployment, printed as `"deployment": "dev-..."` in its startup log. From another terminal, dispatch the worker into a new room with that deployment and the request as metadata. `mode` is `continue` (new messages are saved under the original conversation) or `fork` (a new conversation is saved with a copy of the earlier messages, leaving the original untouched):
+
+```console
+lk dispatch create --new-room --agent-name pierre-assistant-dev \
+  --deployment dev-<id> \
+  --metadata '{"resume":{"conversation_id":"<id from history.db>","mode":"continue"}}'
+```
+
+The model gets the latest 100 user and assistant messages of that conversation, oldest first (tool calls are not replayed), and the agent opens with a short welcome back. A request that cannot be used (bad JSON, unknown mode or conversation, no `CHAT_DB_PATH`) is logged as a warning and the session runs as an ordinary one.
+
 ## Frontends and telephony
 
 Pair the agent with a prebuilt frontend starter, or add telephony:
