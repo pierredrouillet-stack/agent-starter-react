@@ -47,8 +47,14 @@ def parse_resume(metadata: str | None) -> ResumeRequest | None:
         return None
     try:
         data = json.loads(metadata)
-        if not isinstance(data, dict) or set(data) != {"resume"}:
-            raise ValueError("expected only a 'resume' key")
+        if not isinstance(data, dict):
+            raise ValueError("expected a JSON object")
+        # A persona id rides in the same metadata but is read by parse_persona.
+        keys = set(data) - {"persona"}
+        if not keys:
+            return None
+        if keys != {"resume"}:
+            raise ValueError("expected only 'resume' and 'persona' keys")
         body = data["resume"]
         if not isinstance(body, dict) or set(body) != {"conversation_id", "mode"}:
             raise ValueError("'resume' needs exactly conversation_id and mode")
