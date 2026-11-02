@@ -113,7 +113,7 @@ uv run src/agent.py start
 
 ## Resume a saved conversation
 
-The worker saves each session to the SQLite file named by `CHAT_DB_PATH` and can pick up a saved conversation from it. The metadata contract is in [`docs/conversation-storage.md`](../docs/conversation-storage.md); the web app's `/history` page sends it for you. To send it by hand, run the worker with the same `CHAT_DB_PATH` and dispatch it by name (`AGENT_NAME`, default `pierre-assistant-dev`):
+The worker saves each session to the SQLite file named by `CHAT_DB_PATH` and can pick up a saved conversation from it. The metadata contract is in [`docs/conversation-storage.md`](../docs/conversation-storage.md); the web app's `/history` page sends it for you, but only to a worker that has no development deployment, so start that worker with `uv run python src/agent.py dev` rather than `lk agent dev` (the app's token server dispatches to the default deployment). To send it by hand with `lk dispatch`, run the worker with the same `CHAT_DB_PATH` and dispatch it by name (`AGENT_NAME`, default `pierre-assistant-dev`):
 
 ```console
 export CHAT_DB_PATH=/absolute/path/to/history.db
