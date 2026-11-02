@@ -4,11 +4,13 @@ import pytest
 
 from recorder import (
     RESUME_WINDOW,
+    Recorder,
     ResumeError,
     ResumeRequest,
     load_resume,
     open_db,
     parse_resume,
+    start_conversation,
 )
 
 OLD_SCHEMA = """
@@ -148,3 +150,41 @@ def test_load_resume_empty_conversation(tmp_path):
     _seed(conn, "c1", [("system", "only a system note")])
     with pytest.raises(ResumeError):
         load_resume(conn, ResumeRequest("c1", "continue"))
+
+
+def _conversation(conn, conversation_id):
+    return conn.execute(
+        "SELECT started_at, ended_at, parent_id FROM conversations WHERE id = ?",
+        (conversation_id,),
+    ).fetchone()
+
+
+def test_continue_clears_ended_at_and_keeps_started_at(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+    conn.execute(
+        "INSERT INTO conversations (id, started_at, ended_at, agent_name) "
+        "VALUES ('c1', '2026-01-01T00:00:00.000Z', '2026-01-01T01:00:00.000Z', 'a')"
+    )
+
+    start_conversation(conn, "c1", "a")
+
+    assert _conversation(conn, "c1") == ("2026-01-01T00:00:00.000Z", None, None)
+
+
+def test_fork_writes_parent_id(tmp_path):
+    conn = open_db(str(tmp_path / "history.db"))
+
+    start_conversation(conn, "room-2", "a", parent_id="c1")
+
+    _, ended_at, parent_id = _conversation(conn, "room-2")
+    assert ended_at is None
+    assert parent_id == "c1"
+
+
+def test_recorder_passes_parent_id(tmp_path, monkeypatch):
+    path = str(tmp_path / "history.db")
+    monkeypatch.setenv("CHAT_DB_PATH", path)
+
+    Recorder("room-2", "a", parent_id="c1").start()
+
+    assert _conversation(open_db(path), "room-2")[2] == "c1"

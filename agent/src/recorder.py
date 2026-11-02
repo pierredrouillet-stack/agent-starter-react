@@ -123,13 +123,17 @@ def open_db(path: str) -> sqlite3.Connection:
 
 
 def start_conversation(
-    conn: sqlite3.Connection, conversation_id: str, agent_name: str | None
+    conn: sqlite3.Connection,
+    conversation_id: str,
+    agent_name: str | None,
+    parent_id: str | None = None,
 ) -> None:
+    # On conflict (a continued conversation) started_at and parent_id are kept.
     conn.execute(
-        "INSERT INTO conversations (id, started_at, ended_at, agent_name) "
-        "VALUES (?, ?, NULL, ?) "
+        "INSERT INTO conversations (id, started_at, ended_at, agent_name, parent_id) "
+        "VALUES (?, ?, NULL, ?, ?) "
         "ON CONFLICT(id) DO UPDATE SET ended_at = NULL, agent_name = excluded.agent_name",
-        (conversation_id, iso_utc(), agent_name),
+        (conversation_id, iso_utc(), agent_name, parent_id),
     )
 
 
@@ -172,9 +176,15 @@ def db_path_from_env() -> str | None:
 class Recorder:
     """Writes one conversation. Every method logs and swallows errors."""
 
-    def __init__(self, conversation_id: str, agent_name: str | None) -> None:
+    def __init__(
+        self,
+        conversation_id: str,
+        agent_name: str | None,
+        parent_id: str | None = None,
+    ) -> None:
         self.conversation_id = conversation_id
         self.agent_name = agent_name
+        self.parent_id = parent_id
         self._conn: sqlite3.Connection | None = None
         self._enabled = False
         path = db_path_from_env()
@@ -203,7 +213,9 @@ class Recorder:
             logger.exception("history write failed")
 
     def start(self) -> None:
-        self._run(start_conversation, self.conversation_id, self.agent_name)
+        self._run(
+            start_conversation, self.conversation_id, self.agent_name, self.parent_id
+        )
 
     def save_message(
         self,
