@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   ended_at    TEXT,               -- NULL while in progress
   agent_name  TEXT,
   parent_id   TEXT REFERENCES conversations(id),  -- NULL unless forked from another conversation
-  persona     TEXT                -- id of the persona that ran it; NULL means the default persona
+  persona     TEXT,               -- id of the persona that ran it; NULL means the default persona
+  user_id     TEXT                -- anonymous browser id the call was told about; NULL if none
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -42,11 +43,22 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at       TEXT NOT NULL,     -- ISO 8601 UTC
   interrupted      INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS user_facts (
+  id                      INTEGER PRIMARY KEY,
+  user_id                 TEXT NOT NULL,
+  fact                    TEXT NOT NULL,      -- one short sentence the user said about themselves
+  learned_at              TEXT NOT NULL,      -- ISO 8601 UTC
+  source_conversation_id  TEXT                -- the conversation it was learned in
+);
+
+CREATE INDEX IF NOT EXISTS user_facts_user_id ON user_facts(user_id);
 ```
 
-`persona` was added after the first version of this schema. The agent adds it to an older file with
-`ALTER TABLE` when it opens it, so the app MUST NOT assume the column exists. A conversation saved
+`persona` and `user_id` were added after the first version of this schema. The agent adds it to an older file with
+`ALTER TABLE` when it opens it, so the app MUST NOT assume the columns exist. A conversation saved
 before personas existed has `persona = NULL` and is treated as having run with the default persona.
+`user_facts` is created when the agent opens the file, and the app never reads it.
 
 The reader selects explicit columns, so extra columns (latency, tool calls, ...) can be added without
 breaking it. Messages whose `role` is neither `user` nor `assistant` are ignored.
@@ -115,3 +127,54 @@ under a `persona` key next to `resume`. Both keys are optional:
 The ids live in two places that must be kept in step: `PERSONAS` in `agent/src/personas.py` (full
 configuration) and `lib/personas.ts` (id, name and description for the picker). Like resume, this
 needs explicit dispatch, so the picker is shown only when `AGENT_NAME` is set.
+
+## Remembering the user
+
+The browser keeps an anonymous id in `localStorage` and the app sends it as a `user` key in the same
+dispatch metadata, next to `persona` and `resume`. All three keys are optional:
+
+```json
+{ "persona": "tutor", "user": "6f1c0d52-8a4e-4f0b-9d57-2f3f6c1d9a10" }
+```
+
+```json
+{
+  "user": "6f1c0d52-8a4e-4f0b-9d57-2f3f6c1d9a10",
+  "resume": { "conversation_id": "<conversations.id>", "mode": "continue" }
+}
+```
+
+- A missing, empty or non-string `user` means no memory: nothing is read or saved and the call runs as
+  before. Like resume and personas, this needs explicit dispatch (`AGENT_NAME`), and the agent also
+  needs `CHAT_DB_PATH`.
+- The agent writes the id to `conversations.user_id`. A continued conversation keeps the id it was
+  first saved with.
+- After a call ends the agent makes one extra LLM call over what the user said, and adds, removes or
+  replaces rows of `user_facts` for that id. It keeps at most 50 facts per user (the oldest are
+  dropped) and cuts each at 200 characters. If that call fails or runs past 6 seconds, nothing is
+  changed.
+- At the start of every call, for any persona, the agent puts the user's facts in its instructions as
+  background about the user, one line each with the date it was learned.
+
+The id is not a secret and anyone with the file can read every fact, so treat it like the rest of this
+local development file.
+
+### Listing and deleting facts
+
+The tables are plain SQLite. Find ids with `SELECT DISTINCT user_id FROM conversations;`, then, with
+`<user id>` replaced by one of them:
+
+```sql
+SELECT id, fact, learned_at, source_conversation_id FROM user_facts WHERE user_id = '<user id>' ORDER BY learned_at, id;
+```
+
+```sql
+DELETE FROM user_facts WHERE id = 3;
+```
+
+```sql
+DELETE FROM user_facts WHERE user_id = '<user id>';
+```
+
+Calls that start after a delete see the change. The agent writes facts when a call ends, so delete
+while no call for that user is ending.

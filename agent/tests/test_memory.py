@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import sqlite3
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -20,7 +21,7 @@ from memory import (
     session_messages,
     update_facts,
 )
-from recorder import open_db
+from recorder import ResumeRequest, open_db, parse_resume
 
 
 def test_parse_user_reads_the_id():
@@ -457,3 +458,50 @@ def test_attach_memory_is_skipped_without_a_history_file(monkeypatch):
 
     assert attach_memory(_talk(), ctx, "u-1", "room-1", _FakeLLM("{}")) is False
     assert ctx.callbacks == []
+
+
+DOC = Path(__file__).resolve().parents[2] / "docs" / "conversation-storage.md"
+
+
+def _doc_section(heading):
+    text = DOC.read_text()
+    start = text.index(heading)
+    end = text.find("\n## ", start + 1)
+    return text[start : end if end != -1 else len(text)]
+
+
+def _doc_blocks(heading, language):
+    fence = "```" + language + "\n"
+    return [part.split("```", 1)[0] for part in _doc_section(heading).split(fence)[1:]]
+
+
+def test_documented_metadata_examples_are_read():
+    examples = [json.loads(b) for b in _doc_blocks("## Remembering the user", "json")]
+
+    assert len(examples) == 2
+    for example in examples:
+        assert parse_user(json.dumps(example)) == example["user"]
+    resume = parse_resume(json.dumps(examples[1]).replace("<conversations.id>", "c"))
+    assert resume == ResumeRequest("c", "continue")
+
+
+def test_documented_sql_lists_and_deletes_facts(tmp_path):
+    conn = _conn(tmp_path)
+    for n, (user, text) in enumerate(
+        [("u-1", "a"), ("u-1", "b"), ("u-1", "c"), ("u-2", "d")], 1
+    ):
+        conn.execute(
+            "INSERT INTO user_facts VALUES (?, ?, ?, '2026-01-01T00:00:00.000Z', NULL)",
+            (n, user, text),
+        )
+    list_all, delete_one, delete_user = [
+        b.replace("<user id>", "u-1")
+        for b in _doc_blocks("### Listing and deleting facts", "sql")
+    ]
+
+    assert [row[1] for row in conn.execute(list_all)] == ["a", "b", "c"]
+    conn.execute(delete_one)
+    assert _texts(conn) == ["a", "b"]
+    conn.execute(delete_user)
+    assert _texts(conn) == []
+    assert _texts(conn, "u-2") == ["d"]

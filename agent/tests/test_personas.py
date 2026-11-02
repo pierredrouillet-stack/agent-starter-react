@@ -113,7 +113,7 @@ def test_persona_beside_resume_is_read():
 
 def test_documented_metadata_examples_parse():
     doc = (Path(__file__).parents[2] / "docs" / "conversation-storage.md").read_text()
-    section = doc.split("## Choosing a persona")[1]
+    section = doc.split("## Choosing a persona")[1].split("\n## ")[0]
     examples = [
         json.loads(block) for block in re.findall(r"```json\n(.*?)```", section, re.S)
     ]

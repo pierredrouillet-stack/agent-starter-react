@@ -136,6 +136,12 @@ lk dispatch create --new-room --agent-name pierre-assistant-dev \
 
 The model gets the latest 100 user and assistant messages of that conversation, oldest first (tool calls are not replayed), and the agent opens with a short welcome back. A request that cannot be used (bad JSON, unknown mode or conversation, no `CHAT_DB_PATH`) is logged as a warning and the session runs as an ordinary one.
 
+## Remember the user
+
+`src/memory.py` lets the agent remember lasting facts about a user (name, work, preferences, goals) across calls, for every persona. The web app keeps an anonymous id in the browser and sends it as `{"user": "<id>"}` in the dispatch metadata, next to `persona` and `resume`. When a call ends, the worker makes one LLM call over what the user said and saves the result to the `user_facts` table of the `CHAT_DB_PATH` file; at the start of later calls those facts are added to the instructions as background about the user.
+
+Memory needs explicit dispatch (`AGENT_NAME`), a user id and `CHAT_DB_PATH`; without any of them the agent behaves as before, and a failed or slow extraction (longer than 6 seconds) changes nothing. The table, its limits (50 facts per user, 200 characters each) and the SQL to list or delete a user's facts are in [`docs/conversation-storage.md`](../docs/conversation-storage.md#remembering-the-user). Facts are personal data in an unauthenticated local file.
+
 ## Frontends and telephony
 
 Pair the agent with a prebuilt frontend starter, or add telephony:
