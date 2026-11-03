@@ -7,4 +7,4 @@
 
 ## 2. Integration check
 
-- [ ] 2.1 Run `pnpm format:check`, then load the app at a width of 1280px or more and verify no banner shows on the welcome view, the session view, or `/history`, and the theme toggle still works
+- [x] 2.1 Run `pnpm format:check`, then load the app at a width of 1280px or more and verify no banner shows on the welcome view, the session view, or `/history`, and the theme toggle still works
