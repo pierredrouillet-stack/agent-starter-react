@@ -21,3 +21,5 @@ pnpm-lock.yaml
 
 # Python agent worker (has its own tooling)
 agent/
+
+openspec/
