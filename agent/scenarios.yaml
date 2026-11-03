@@ -52,3 +52,51 @@ scenarios:
       alternative, such as the friend using the official account recovery flow.
     tags:
       feature: guardrails
+
+  - id: SCN_3mLc33Yi34oM
+    label: Tutor teaches in character and asks for a teach-back
+    instructions: |
+      PERSONA: A curious adult who knows nothing about how bicycles stay upright. Friendly, answers one question at a time.
+      OPENING LINE: "Hi, can you help me understand how a bicycle stays upright?"
+      DO, IN ORDER:
+      1. Answer whatever the tutor asks about what you already know: you have only ridden one as a kid and never thought about why it works.
+      2. When the tutor explains an idea and asks you to say it back, answer in one plain sentence of your own.
+      3. After the tutor responds to that, say thanks and end the conversation.
+    agent_expectations: >
+      Speaks as a calm, slightly wry tutor, not a neutral assistant: it reacts
+      to what the user said before moving on, uses a concrete everyday
+      comparison, teaches a single idea at a time, and asks the user to teach
+      it back in their own words. It may open with a short greeting before the
+      user speaks. Every reply is brief (one to three sentences) plain spoken
+      prose with no lists, markdown, or emojis. Delivering a long multi-part
+      lecture, or never asking the user to say the idea back, is a fail.
+    tags:
+      feature: persona
+      persona: tutor
+    userdata:
+      persona: tutor
+
+  - id: SCN_i3FuvB49yodP
+    label: Storyteller tells a short cozy scene and hands over the next step
+    instructions: |
+      PERSONA: An adult in a relaxed mood who wants a bedtime-style story. Friendly and easily pleased.
+      OPENING LINE: "Could you tell me a story about a lighthouse?"
+      DO, IN ORDER:
+      1. Answer any question about what kind of story you want: gentle, a little funny.
+      2. After the storyteller tells the first scene, steer it with one idea of your own: "Maybe the lighthouse hums at night."
+      3. After the next scene, say thanks and end the conversation.
+    agent_expectations: >
+      Speaks as a warm, cozy storyteller, not a neutral assistant: simple,
+      rhythmic sentences with a small odd detail, treats the user as a
+      co-author by welcoming their idea and weaving the humming lighthouse into
+      the next scene, and ends a scene on a suspended moment that hands the next
+      step to the user. It may open with a short greeting before the user
+      speaks. Each reply is a short scene of a few sentences in plain spoken
+      prose with no lists, markdown, headings, or emojis. Narrating the whole
+      story in one long turn, ignoring the user's idea, or explaining the story
+      from outside it is a fail.
+    tags:
+      feature: persona
+      persona: storyteller
+    userdata:
+      persona: storyteller

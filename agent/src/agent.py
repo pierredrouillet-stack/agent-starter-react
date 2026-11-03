@@ -85,6 +85,18 @@ def session_persona(metadata: str | None, resume: ResumeRequest | None) -> Perso
     return persona_by_id(saved)
 
 
+def simulated_persona(simulation) -> Persona | None:
+    """The persona a simulation scenario asks for in its userdata; None otherwise.
+
+    A simulation dispatches no metadata, so this is how a scenario reaches a
+    persona. `simulation` is `ctx.simulation_context()`, None in production.
+    """
+    if simulation is None:
+        return None
+    persona_id = simulation.userdata().get("persona")
+    return persona_by_id(persona_id) if persona_id else None
+
+
 def carried_chat_ctx(carried: list[CarriedMessage]) -> llm.ChatContext:
     """Chat context holding the earlier messages, under their saved ids."""
     chat_ctx = llm.ChatContext()
@@ -225,6 +237,8 @@ async def my_agent(ctx: JobContext):
 
     resume, carried = resolve_resume(ctx.job.metadata)
     persona = session_persona(ctx.job.metadata, resume)
+    if resume is None:
+        persona = simulated_persona(ctx.simulation_context()) or persona
     user_id = parse_user(ctx.job.metadata)
     facts = load_user_facts(user_id)
     recorder = attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)

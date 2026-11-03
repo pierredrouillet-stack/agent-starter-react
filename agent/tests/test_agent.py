@@ -63,6 +63,7 @@ from agent import (
     greet,
     resolve_resume,
     session_persona,
+    simulated_persona,
 )
 from memory import apply_changes, load_user_facts, parse_user
 from personas import DEFAULT_PERSONA, PERSONAS
@@ -275,3 +276,34 @@ def test_a_resumed_session_with_no_opener_is_still_welcomed_back():
     greet(session, ResumeRequest("c1", "continue"), DEFAULT_PERSONA)
 
     assert session.replies == [RESUME_WELCOME]
+
+
+class _FakeSimulation:
+    def __init__(self, userdata):
+        self._userdata = userdata
+
+    def userdata(self):
+        return self._userdata
+
+
+def test_a_scenario_can_pick_the_persona():
+    sim = _FakeSimulation({"persona": "storyteller"})
+
+    assert simulated_persona(sim) is PERSONAS["storyteller"]
+
+
+def test_outside_a_simulation_nothing_is_picked():
+    assert simulated_persona(None) is None
+
+
+@pytest.mark.parametrize("userdata", [{}, {"persona": ""}, {"other": 1}])
+def test_a_scenario_without_a_persona_picks_none(userdata):
+    assert simulated_persona(_FakeSimulation(userdata)) is None
+
+
+def test_a_scenario_naming_an_unknown_persona_gets_the_default(caplog):
+    with caplog.at_level(logging.WARNING, logger="personas"):
+        assert (
+            simulated_persona(_FakeSimulation({"persona": "nope"})) is DEFAULT_PERSONA
+        )
+    assert "nope" in caplog.text
