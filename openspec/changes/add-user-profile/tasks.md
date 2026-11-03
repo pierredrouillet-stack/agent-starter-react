@@ -3,7 +3,7 @@
 ## 1. Profile loader
 
 - [x] 1.1 Create `agent/src/user_profile.py` (not `profile.py`, which the stdlib `profile` module shadows) with `load_user_profile()` that reads `agent/profile.md` (path resolved from the agent folder), returns the stripped text, and returns an empty string for a missing file (silent) or an empty, unreadable or over-4,000-character file (logged warning, file refused whole); verify with tests in `agent/tests/test_user_profile.py` for present, missing, whitespace-only, unreadable, oversized and edited-between-reads cases
-- [ ] 1.2 Add `profile.md` to `agent/.gitignore` and commit `agent/profile.example.md` showing the format (name, role, how to be addressed, preferences); verify with `git check-ignore agent/profile.md` and that the example file is tracked
+- [x] 1.2 Add `profile.md` to `agent/.gitignore` and commit `agent/profile.example.md` showing the format (name, role, how to be addressed, preferences); verify with `git check-ignore agent/profile.md` and that the example file is tracked
 
 ## 2. Profile in the prompt
 
