@@ -8,7 +8,7 @@ Defines how the local agent worker acts on a request to resume or fork a saved c
 
 ### Requirement: Read the resume request
 
-The system SHALL read, from the dispatch metadata of a session, a request naming a saved conversation and a mode of either continue or fork, and SHALL accept a persona id in the same metadata.
+The system SHALL read, from the dispatch metadata of a session, a request naming a saved conversation and a mode of either continue or fork, and SHALL accept a persona id and a user id in the same metadata.
 
 #### Scenario: Valid request
 
@@ -24,6 +24,11 @@ The system SHALL read, from the dispatch metadata of a session, a request naming
 
 - **WHEN** the metadata holds both a resume request and a persona id
 - **THEN** the resume request is read as usual and is not discarded because of the persona
+
+#### Scenario: User id beside a resume request
+
+- **WHEN** the metadata holds both a resume request and a user id
+- **THEN** the resume request is read as usual and is not discarded because of the user id
 
 ### Requirement: Carry the earlier conversation into the session
 

@@ -32,8 +32,8 @@
 
 ## 6. End-to-end check
 
-- [ ] 6.1 Run the worker and the app locally with `AGENT_NAME` and `CHAT_DB_PATH` set, tell the agent a name and a preference in one call, then start a second call with a different persona and confirm it knows both; verify in the SQLite file that `conversations.user_id` and `user_facts` rows exist with dates and sources, and note the runs
-- [ ] 6.2 Confirm the failure paths by starting a call with `CHAT_DB_PATH` unset and with a cleared browser id; verify the call runs normally and no facts are read or written
+- [x] 6.1 Run the worker and the app locally with `AGENT_NAME` and `CHAT_DB_PATH` set, tell the agent a name and a preference in one call, then start a second call with a different persona and confirm it knows both; verify in the SQLite file that `conversations.user_id` and `user_facts` rows exist with dates and sources, and note the runs
+- [x] 6.2 Confirm the failure paths by starting a call with `CHAT_DB_PATH` unset and with a cleared browser id; verify the call runs normally and no facts are read or written
 
 ## Workflow follow-up
 
