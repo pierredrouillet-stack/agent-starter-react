@@ -13,6 +13,7 @@ The app talks to a single hardcoded `Assistant`: one personality, one goal, one 
 - Three personas ship as a starting set: the default assistant and two with distinct personalities. All three share the default voice until the user supplies other voice ids.
 
 Assumptions (the user can change these when reviewing):
+
 - The user picks before the call, and the persona is fixed for the call.
 - The persona list is duplicated in both programs. The app holds ids and labels, and the agent holds full configs.
 - The feature requires explicit dispatch (`AGENT_NAME`), as resume does. It is unavailable with the LiveKit homepage agent.
@@ -20,10 +21,12 @@ Assumptions (the user can change these when reviewing):
 ## Capabilities
 
 ### New Capabilities
+
 - `agent-persona-selection`: the web app offers personas on the welcome screen and tells the agent which one was chosen.
 - `agent-personas`: the agent worker defines personas and runs each session with the requested one, with a safe fallback.
 
 ### Modified Capabilities
+
 - `conversation-recording`: a conversation also records its persona.
 - `conversation-resume`: resume and fork carry no new choice and the picker is hidden while a resume is pending.
 - `agent-conversation-resume`: the agent accepts a `persona` key beside `resume`, and a resumed or forked session runs with the saved conversation's persona.

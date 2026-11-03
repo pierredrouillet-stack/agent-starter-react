@@ -13,11 +13,13 @@ See proposal.md for motivation. Current state that shapes the approach:
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Adding a persona means editing one Python entry and one TypeScript entry, no new worker.
 - A bad or missing persona id never breaks a call, and never loses a resume request.
 - Existing history files keep working, and conversations saved before this change read as the default persona.
 
 **Non-Goals:**
+
 - A persona schema rich enough for tools, knowledge or handoffs. Keep the dataclass small and extend it when a persona needs more.
 - Generating the picker from the agent's registry at runtime.
 
