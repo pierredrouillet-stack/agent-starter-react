@@ -46,4 +46,4 @@ operations:
   archive:
     guidance:
       - Summarize the archive outcome before finishing
-      - Commit the changes and push to origin
+      - Once the changes are synced and archived, commit the changes and merge the branch to `main` and push to origin
