@@ -13,5 +13,5 @@
 
 ## 3. Documentation and check
 
-- [ ] 3.1 Document `agent/profile.md` (exact name, gitignored, size cap, edits apply to the next call, sent to the LLM provider, wins over learned facts) in `agent/README.md`, and add one line in the repository `CLAUDE.md`; verify the documented steps work by creating a profile and starting a call
-- [ ] 3.2 Check end to end: start `cd agent && uv run python src/agent.py dev`, call with two different personas and ask what the agent knows about you, then remove the file and confirm the behavior is unchanged; run `openspec validate add-user-profile`
+- [x] 3.1 Document `agent/profile.md` (exact name, gitignored, size cap, edits apply to the next call, sent to the LLM provider, wins over learned facts) in `agent/README.md`, and add one line in the repository `CLAUDE.md`; verify the documented steps work by creating a profile and starting a call
+- [x] 3.2 Check end to end: start `cd agent && uv run python src/agent.py dev`, call with two different personas and ask what the agent knows about you, then remove the file and confirm the behavior is unchanged; run `openspec validate add-user-profile`
