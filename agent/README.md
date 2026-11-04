@@ -136,6 +136,12 @@ lk dispatch create --new-room --agent-name pierre-assistant-dev \
 
 The model gets the latest 100 user and assistant messages of that conversation, oldest first (tool calls are not replayed), and the agent opens with a short welcome back. A request that cannot be used (bad JSON, unknown mode or conversation, no `CHAT_DB_PATH`) is logged as a warning and the session runs as an ordinary one.
 
+## Tell the agent about yourself
+
+Write a few lines about yourself (name, role, how to be addressed, preferences) in `agent/profile.md`, and every persona knows them from the first word. Copy [`profile.example.md`](profile.example.md) to start; the name must be exactly `profile.md`, in this folder. The file is gitignored, optional, and capped at 4,000 characters: a missing, empty, unreadable or longer file is ignored (the last three are logged) and the call runs as before. It is read at the start of each call, so an edit applies to the next call without restarting the worker, and it works with or without a named agent.
+
+The text is added to the instructions as background the user wrote on purpose, never as rules, and it wins over facts the agent learned from earlier calls (see below). It is sent to the LLM provider with every call, so write only what you are comfortable sharing.
+
 ## Remember the user
 
 `src/memory.py` lets the agent remember lasting facts about a user (name, work, preferences, goals) across calls, for every persona. The web app keeps an anonymous id in the browser and sends it as `{"user": "<id>"}` in the dispatch metadata, next to `persona` and `resume`. When a call ends, the worker makes one LLM call over what the user said and saves the result to the `user_facts` table of the `CHAT_DB_PATH` file; at the start of later calls those facts are added to the instructions as background about the user.
