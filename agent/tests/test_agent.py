@@ -56,6 +56,7 @@ from dataclasses import replace
 
 import pytest
 
+import user_profile
 from agent import (
     RESUME_WELCOME,
     Assistant,
@@ -68,6 +69,7 @@ from agent import (
 from memory import apply_changes, load_user_facts, parse_user
 from personas import DEFAULT_PERSONA, PERSONAS
 from recorder import ResumeRequest, open_db
+from user_profile import load_user_profile
 
 
 @pytest.fixture
@@ -307,3 +309,53 @@ def test_a_scenario_naming_an_unknown_persona_gets_the_default(caplog):
             simulated_persona(_FakeSimulation({"persona": "nope"})) is DEFAULT_PERSONA
         )
     assert "nope" in caplog.text
+
+
+@pytest.fixture
+def profile_file(tmp_path, monkeypatch):
+    path = tmp_path / "profile.md"
+    monkeypatch.setattr(user_profile, "PROFILE_PATH", path)
+    return path
+
+
+def test_the_profile_reaches_every_persona(profile_file):
+    profile_file.write_text("I am Sam, a nurse.", encoding="utf-8")
+    profile = load_user_profile()
+
+    for persona in PERSONAS.values():
+        instructions = Assistant(persona, profile=profile).instructions
+        assert "I am Sam, a nurse." in instructions
+        assert "# About the user" in instructions
+
+
+def test_the_profile_reaches_a_resumed_session(history, profile_file):
+    profile_file.write_text("I am Sam, a nurse.", encoding="utf-8")
+    request, carried = resolve_resume(_meta("c1"))
+
+    assistant = Assistant(
+        DEFAULT_PERSONA, carried_chat_ctx(carried), profile=load_user_profile()
+    )
+
+    assert request is not None
+    assert "I am Sam, a nurse." in assistant.instructions
+
+
+def test_the_profile_needs_no_user_id(history, profile_file):
+    profile_file.write_text("I am Sam, a nurse.", encoding="utf-8")
+
+    facts = load_user_facts(parse_user('{"persona":"tutor"}'))
+    assistant = Assistant(facts=facts, profile=load_user_profile())
+
+    assert facts == []
+    assert "I am Sam, a nurse." in assistant.instructions
+
+
+def test_no_profile_file_gives_the_unchanged_prompt(profile_file):
+    profile = load_user_profile()
+
+    assert profile == ""
+    for persona in PERSONAS.values():
+        assert (
+            Assistant(persona, profile=profile).instructions
+            == persona.full_instructions()
+        )

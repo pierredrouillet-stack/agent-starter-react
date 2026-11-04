@@ -30,6 +30,7 @@ from recorder import (
     open_db,
     parse_resume,
 )
+from user_profile import load_user_profile
 
 logger = logging.getLogger("agent")
 
@@ -125,6 +126,7 @@ class Assistant(Agent):
         persona: Persona = DEFAULT_PERSONA,
         chat_ctx: llm.ChatContext | None = None,
         facts: Sequence[Fact] = (),
+        profile: str = "",
     ) -> None:
         super().__init__(
             chat_ctx=chat_ctx if chat_ctx is not None else NOT_GIVEN,
@@ -143,7 +145,7 @@ class Assistant(Agent):
                 if persona.voice
                 else NOT_GIVEN
             ),
-            instructions=persona.full_instructions(facts),
+            instructions=persona.full_instructions(facts, profile),
         )
 
     # To add tools, use the @function_tool decorator.
@@ -241,6 +243,7 @@ async def my_agent(ctx: JobContext):
         persona = simulated_persona(ctx.simulation_context()) or persona
     user_id = parse_user(ctx.job.metadata)
     facts = load_user_facts(user_id)
+    profile = load_user_profile()
     recorder = attach(session, ctx, AGENT_NAME, resume, carried, persona.id, user_id)
     attach_memory(
         session,
@@ -253,7 +256,12 @@ async def my_agent(ctx: JobContext):
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(persona, carried_chat_ctx(carried) if resume else None, facts),
+        agent=Assistant(
+            persona,
+            carried_chat_ctx(carried) if resume else None,
+            facts,
+            profile,
+        ),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

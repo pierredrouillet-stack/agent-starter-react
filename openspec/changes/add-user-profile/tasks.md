@@ -8,7 +8,7 @@
 ## 2. Profile in the prompt
 
 - [x] 2.1 Add `USER_PROFILE_INTRO` and `user_profile_section` to `agent/src/personas.py` and extend `Persona.full_instructions(facts, profile="")` to insert the section after the persona's instructions and before the facts section; verify with tests that an empty profile leaves every persona's prompt identical to today's (including `ORIGINAL_ASSISTANT_PROMPT`), that every persona includes a given profile, that it precedes the facts section, and that an instruction-like profile stays inside the framed section
-- [ ] 2.2 Load the profile in `my_agent` beside `load_user_facts` and pass it to `Assistant`, which forwards it to `full_instructions`; verify with `agent/tests/test_agent.py` cases that two personas and a resumed session all receive the profile, and that no profile file yields the unchanged instructions
+- [x] 2.2 Load the profile in `my_agent` beside `load_user_facts` and pass it to `Assistant`, which forwards it to `full_instructions`; verify with `agent/tests/test_agent.py` cases that two personas and a resumed session all receive the profile, and that no profile file yields the unchanged instructions
 - [ ] 2.3 Run `uv run ruff format`, `uv run ruff check` and `uv run pytest` in `agent/` and confirm all pass
 
 ## 3. Documentation and check
